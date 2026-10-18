@@ -1,50 +1,25 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
+import { Dashboard } from '../components/dashboard/Dashboard'
 import { config } from '../config'
 import { useAuth } from '../lib/auth'
 import { formatCode, isValidCodeFormat, MESSAGES } from '../lib/licenseCode'
 import { supabase } from '../lib/supabase'
 import '../styles/app.css'
 
-const dateFmt = new Intl.DateTimeFormat('id-ID', { dateStyle: 'long', timeZone: 'Asia/Makassar' })
-
-/**
- * Halaman aplikasi sementara. Dashboard (beranda, transaksi, anggaran, dst.) dibangun
- * di sini nanti, memakai desain di docs/reference/prototype-v3.html.
- */
 export default function AppHome() {
   const { loading, session, profile, isActive, refreshProfile, signOut } = useAuth()
 
   if (loading) return <p className="app-wait">Memuat…</p>
   if (!session) return <Navigate to="/" replace />
 
-  return (
-    <div className="app-shell">
-      <header className="app-top">
-        <span className="brand"><span className="mark" aria-hidden="true">F</span>Finora</span>
-        <button className="pill" type="button" onClick={() => void signOut()}>Keluar</button>
-      </header>
-
-      <main className="app-main">
-        <h1 className="app-h1">Halo, {profile?.name || session.user.email}</h1>
-
-        {isActive ? (
-          <p className="app-lead">
-            Akses aktif sampai <b>{dateFmt.format(new Date(profile!.active_until!))}</b>.
-          </p>
-        ) : (
-          <ActivateCard onDone={refreshProfile} expired={Boolean(profile?.active_until)} />
-        )}
-
-        {isActive && <TelegramCard linked={Boolean(profile?.telegram_chat_id)} onLinked={refreshProfile} />}
-
-        <section className="app-card">
-          <h2>Dashboard</h2>
-          <p className="muted">Beranda, transaksi, anggaran, tabungan, dan laporan akan dipasang di sini.</p>
-        </section>
-      </main>
-    </div>
-  )
+  const currentProfile = profile?.id === session.user.id ? profile : null
+  const accountActive = Boolean(currentProfile && isActive)
+  return <Dashboard key={session.user.id} userId={session.user.id} name={currentProfile?.name || session.user.email || 'Anda'}
+    activeUntil={currentProfile?.active_until ?? null} isActive={accountActive} telegramLinked={Boolean(currentProfile?.telegram_chat_id)} onSignOut={signOut}>
+    {!accountActive && <ActivateCard onDone={refreshProfile} expired={Boolean(currentProfile?.active_until)} />}
+    {accountActive && <TelegramCard linked={Boolean(currentProfile?.telegram_chat_id)} onLinked={refreshProfile} />}
+  </Dashboard>
 }
 
 function ActivateCard({ onDone, expired }: { onDone: () => Promise<void>; expired: boolean }) {
@@ -125,7 +100,10 @@ function TelegramCard({ linked, onLinked }: { linked: boolean; onLinked: () => P
             </button>
           )}
           {linkCode && (
-            <button className="linkbtn-dark" type="button" onClick={() => void onLinked()}>Sudah saya kirim, periksa status</button>
+            <>
+              <button className="linkbtn-dark" type="button" onClick={() => void onLinked()}>Sudah saya kirim, periksa status</button>
+              <button className="linkbtn-dark" type="button" onClick={() => void make()} disabled={busy}>{busy ? 'Membuat…' : 'Buat kode tautan baru'}</button>
+            </>
           )}
           <p className="err" role="alert">{err}</p>
         </>
