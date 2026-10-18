@@ -1,0 +1,19 @@
+/* Gaya halaman aplikasi; memakai variabel warna dari landing.css */
+.app-wait{padding:48px 20px;text-align:center;color:var(--muted)}
+.app-shell{min-height:100vh}
+.app-top{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:760px;margin-inline:auto;padding:18px 20px}
+.app-main{max-width:760px;margin-inline:auto;padding:8px 20px 64px;display:grid;gap:16px}
+.app-h1{font-size:clamp(2rem,5vw,3rem);letter-spacing:-.04em}
+.app-lead{color:var(--muted);font-size:1.05rem}
+.app-lead b{color:var(--fg)}
+.app-card{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:24px;display:grid;gap:12px;box-shadow:var(--shadow)}
+.app-card h2{font-size:1.4rem;letter-spacing:-.03em}
+.app-card .muted{color:var(--muted)}
+.app-card a{font-weight:700}
+.app-card code{font-family:var(--font-m);background:var(--lime-soft);color:var(--lime-ink);padding:2px 8px;border-radius:8px}
+.app-card .field{margin-top:4px}
+.app-card .err{margin-top:0}
+.app-card .btn{justify-self:start}
+.link-code{font-size:1.4rem}
+.linkbtn-dark{justify-self:start;background:none;border:0;padding:6px 0;color:var(--muted);font:600 .92rem/1 var(--font-b);text-decoration:underline;text-underline-offset:4px;cursor:pointer}
+.linkbtn-dark:hover{color:var(--fg)}
