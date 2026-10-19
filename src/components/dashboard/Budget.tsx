@@ -127,7 +127,7 @@ export function BudgetScreen({ transactions, state, month, onUpdate }: { transac
             {category.limit > 0 && <div className={`dash-progress${tier !== 'ok' ? ` is-${tier === 'bad' ? 'over' : 'warn'}` : ''}`}><i style={{ width: `${ratio * 100}%` }} /></div>}
           </li>
         })}</ul>
-        : <p className="dash-muted" style={{ marginTop: 14 }}>Belum ada pengeluaran atau batas kategori bulan ini.</p>}
+        : <EmptyState title="Belum ada batas per kategori">Tambahkan batas kategori untuk memantau pengeluaran yang sering membengkak.</EmptyState>}
     </section>
   </div>
 }

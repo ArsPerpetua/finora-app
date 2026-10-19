@@ -8,7 +8,7 @@ import { Icon, type IconName } from './Icon'
 
 type Updater = (updater: (state: FinancialState) => FinancialState) => Promise<void>
 
-const ACCOUNT_TYPES: { value: string; label: string }[] = [
+export const ACCOUNT_TYPES: { value: string; label: string }[] = [
   { value: 'cash', label: 'Tunai' },
   { value: 'bank', label: 'Bank' },
   { value: 'savings', label: 'Tabungan' },

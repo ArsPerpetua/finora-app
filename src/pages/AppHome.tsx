@@ -16,7 +16,7 @@ export default function AppHome() {
   const currentProfile = profile?.id === session.user.id ? profile : null
   const accountActive = Boolean(currentProfile && isActive)
   return <Dashboard key={session.user.id} userId={session.user.id} name={currentProfile?.name || session.user.email || 'Anda'}
-    activeUntil={currentProfile?.active_until ?? null} isActive={accountActive} telegramLinked={Boolean(currentProfile?.telegram_chat_id)} onSignOut={signOut}>
+    activeUntil={currentProfile?.active_until ?? null} isActive={accountActive} telegramLinked={Boolean(currentProfile?.telegram_chat_id)} onSignOut={signOut} onProfileUpdated={refreshProfile}>
     {!accountActive && <ActivateCard onDone={refreshProfile} expired={Boolean(currentProfile?.active_until)} />}
     {accountActive && <TelegramCard linked={Boolean(currentProfile?.telegram_chat_id)} onLinked={refreshProfile} />}
   </Dashboard>

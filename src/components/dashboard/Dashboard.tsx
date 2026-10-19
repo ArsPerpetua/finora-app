@@ -14,6 +14,7 @@ import { BudgetScreen } from './Budget'
 import { CashFlowChart } from './CashFlowChart'
 import { GoalsScreen } from './Goals'
 import { Icon, type IconName } from './Icon'
+import { OnboardingDialog } from './Onboarding'
 import { ReportScreen } from './Report'
 import { TransactionFormDialog } from './TransactionForm'
 import { TransactionList } from './TransactionList'
@@ -25,7 +26,12 @@ interface Props {
   isActive: boolean
   telegramLinked: boolean
   onSignOut: () => Promise<void>
+  onProfileUpdated: () => Promise<void>
   children: ReactNode
+}
+
+function onboardingKey(userId: string) {
+  return `finora.onboarded.${userId}`
 }
 
 const expiryFormat = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Makassar' })
@@ -240,13 +246,20 @@ const PAGES = {
 
 type PageKey = keyof typeof PAGES
 
-export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked, onSignOut, children }: Props) {
+export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked, onSignOut, onProfileUpdated, children }: Props) {
   const data = useDashboardData(userId)
   const toggleTheme = useTheme()
   const location = useLocation()
   const [month, setMonth] = useState(() => todayMakassar().slice(0, 7))
   const [txOpen, setTxOpen] = useState(false)
   const [txEditing, setTxEditing] = useState<Transaction | null>(null)
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
+    try { return localStorage.getItem(onboardingKey(userId)) === '1' } catch { return false }
+  })
+  function dismissOnboarding() {
+    setOnboardingDismissed(true)
+    try { localStorage.setItem(onboardingKey(userId), '1') } catch { /* onboarding mungkin tampil lagi di sesi lain, tidak fatal */ }
+  }
   const page = (Object.keys(PAGES) as PageKey[]).find(key => PAGES[key].match.test(location.pathname))
   function openAddTransaction() { setTxEditing(null); setTxOpen(true) }
   function openEditTransaction(tx: Transaction) { setTxEditing(tx); setTxOpen(true) }
@@ -282,5 +295,7 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
     </main>
     <Navigation mobile />
     <TransactionFormDialog open={txOpen} onClose={() => setTxOpen(false)} userId={userId} state={data.financialState} editing={txEditing} onSaved={data.refresh} />
+    {isActive && data.hasData && !onboardingDismissed && data.financialState.accounts.length === 0
+      && <OnboardingDialog userId={userId} name={name} onUpdate={data.updateState} onProfileUpdated={onProfileUpdated} onDone={dismissOnboarding} />}
   </div>
 }
