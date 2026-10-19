@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import {
-  ACCOUNT_COLORS, isAccountInUse, newId, removeAccount, removeCategory, rupiah, setDefaultAccount, upsertAccount, upsertCategory,
+  ACCOUNT_COLORS, CATEGORY_ICONS, isAccountInUse, newId, removeAccount, removeCategory, rupiah, setDefaultAccount, upsertAccount, upsertCategory,
   type Account, type Category, type CategoryType, type FinancialState, type Transaction,
 } from '../../lib/finance'
 import { EmptyState } from './Dashboard'
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
 
 type Updater = (updater: (state: FinancialState) => FinancialState) => Promise<void>
 
@@ -110,6 +110,7 @@ function CategoryForm({ initial, defaultType, onSave, onCancel }: { initial: Cat
   const [name, setName] = useState(initial?.name ?? '')
   const [type, setType] = useState<CategoryType>(initial?.type ?? defaultType)
   const [color, setColor] = useState(initial?.color ?? '#8a9484')
+  const [icon, setIcon] = useState(initial?.icon && CATEGORY_ICONS.includes(initial.icon) ? initial.icon : CATEGORY_ICONS[0])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -120,7 +121,7 @@ function CategoryForm({ initial, defaultType, onSave, onCancel }: { initial: Cat
     setBusy(true)
     setErr('')
     try {
-      await onSave({ id: initial?.id ?? newId('cat'), name: trimmed, type, color })
+      await onSave({ id: initial?.id ?? newId('cat'), name: trimmed, type, color, icon })
     } catch {
       setErr('Gagal menyimpan. Periksa koneksi Anda lalu coba lagi.')
       setBusy(false)
@@ -132,6 +133,17 @@ function CategoryForm({ initial, defaultType, onSave, onCancel }: { initial: Cat
       <label className="dash-field"><span>Nama kategori</span><input value={name} onChange={event => setName(event.target.value)} placeholder="Contoh: Olahraga" maxLength={30} autoFocus /></label>
       <label className="dash-field"><span>Jenis</span><select value={type} onChange={event => setType(event.target.value as CategoryType)}><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></label>
       <label className="dash-field"><span>Warna</span><input type="color" value={color} onChange={event => setColor(event.target.value)} /></label>
+    </div>
+    <div className="dash-field">
+      <span>Ikon</span>
+      <div className="dash-row-actions" role="radiogroup" aria-label="Pilih ikon kategori" style={{ flexWrap: 'wrap' }}>
+        {CATEGORY_ICONS.map(item => (
+          <button key={item} type="button" role="radio" aria-checked={icon === item} aria-label={item} onClick={() => setIcon(item)}
+            style={icon === item ? { borderColor: color, color, backgroundColor: color + '18' } : undefined}>
+            <Icon name={item as IconName} size={15} />
+          </button>
+        ))}
+      </div>
     </div>
     {err && <p className="err" role="alert">{err}</p>}
     <div className="dash-form-actions">
@@ -166,7 +178,7 @@ function CategoriesCard({ state, onUpdate }: { state: FinancialState; onUpdate: 
           {mode === category.id
             ? <CategoryForm initial={category} defaultType={category.type} onSave={save} onCancel={() => setMode('closed')} />
             : <>
-              <span className="dash-color-dot" style={{ background: category.color, width: 14, height: 14 }} />
+              <span className="dash-category-icon" style={{ color: category.color, backgroundColor: category.color + '18' }}><Icon name={category.icon as IconName} size={17} /></span>
               <div className="dash-row-main"><strong>{category.name}</strong><span>{category.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</span></div>
               <div className="dash-row-actions">
                 <button type="button" aria-label={`Ubah ${category.name}`} onClick={() => setMode(category.id)}><Icon name="edit" size={15} /></button>

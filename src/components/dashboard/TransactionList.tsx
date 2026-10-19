@@ -15,10 +15,9 @@ export function TransactionList({ transactions, state, onEdit, onDelete }: {
           {rows.map(tx => {
             const category = categoryFor(tx, state)
             const fee = transferFee(tx)
-            const icon: IconName = tx.type === 'transfer' ? 'transfer' : tx.type === 'income' ? 'income' : tx.cat_id === 'food' ? 'food' : 'tag'
             const label = tx.title || category.name
             return <li key={tx.id} className="dash-transaction">
-              <span className="dash-category-icon" style={{ color: category.color, backgroundColor: category.color + '18' }}><Icon name={icon} /></span>
+              <span className="dash-category-icon" style={{ color: category.color, backgroundColor: category.color + '18' }}><Icon name={category.icon as IconName} /></span>
               <div className="dash-transaction-info"><strong>{label}</strong><span>{category.name} <span aria-hidden="true">·</span> {accountLabel(tx, state)}{fee > 0 ? ` · biaya ${rupiah(fee)}` : ''}</span>{tx.note && <small>{tx.note}</small>}</div>
               <div className="dash-transaction-amount"><strong className={tx.type === 'income' ? 'dash-positive' : tx.type === 'expense' ? 'dash-negative' : ''}>{tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}{rupiah(Number(tx.amount))}</strong><span>{tx.source === 'telegram' ? 'Telegram' : 'Web'}{tx.type === 'transfer' ? ' · Transfer' : ''}</span></div>
               {(onEdit || onDelete) && <div className="dash-row-actions">

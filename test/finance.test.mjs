@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  budgetStats, cashFlow, categoryComparison, categoryFor, contributeToGoal, expenseCategories,
+  budgetStats, CATEGORY_ICONS, cashFlow, categoryComparison, categoryFor, contributeToGoal, DEFAULT_CATEGORIES, expenseCategories,
   expenseCategoryOptions, filterTransactions, goalProgress, isAccountInUse, readFinancialState, removeAccount,
   removeCategory, removeGoal, setBudgetTotal, setCategoryBudget, setDefaultAccount, shiftMonth, sortTransactions,
   summarize, todayMakassar, totalBalance, upsertAccount, upsertCategory, upsertGoal,
@@ -164,6 +164,16 @@ test('akun default untuk bot dan larangan hapus akun yang dipakai transaksi', ()
   assert.match(withColors.accounts[0].color, /^#[a-f\d]{6}$/i, 'akun tanpa warna tersimpan mendapat warna bawaan')
   assert.equal(withColors.defaultAccountId, 'y')
   assert.equal(readFinancialState({ accounts: [{ id: 'x', name: 'X' }], defaultAccountId: 'tidak-ada' }).defaultAccountId, null, 'defaultAccountId yang tidak merujuk akun manapun diabaikan')
+})
+
+test('ikon kategori: bawaan lengkap, kustom tervalidasi, dan kategori sistem "fees" punya ikon sendiri', () => {
+  assert.equal(DEFAULT_CATEGORIES.every(item => item.icon), true, 'setiap kategori bawaan punya ikon')
+  assert.equal(DEFAULT_CATEGORIES.find(item => item.id === 'fees').icon, 'receipt', 'ikon "fees" khusus, tidak termasuk pilihan pengguna')
+  assert.equal(CATEGORY_ICONS.includes('receipt'), false, '"receipt" tidak ditawarkan di pemilih ikon kategori kustom')
+  const withIcon = readFinancialState({ cats: [{ id: 'c1', name: 'Olahraga', color: '#111111', icon: 'heart' }, { id: 'c2', name: 'Lainnya', color: '#222222', icon: 'bukan-ikon' }] })
+  assert.equal(withIcon.cats[0].icon, 'heart')
+  assert.equal(withIcon.cats[1].icon, 'dots', 'ikon tidak dikenal jatuh ke "dots"')
+  assert.equal(categoryFor(tx({ type: 'transfer' }), state).icon, 'transfer')
 })
 
 test('transaksi terbaru diurutkan stabil berdasarkan tanggal dan waktu pencatatan', () => {

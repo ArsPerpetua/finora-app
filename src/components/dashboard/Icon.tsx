@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 export type IconName = 'home' | 'list' | 'wallet' | 'income' | 'expense' | 'transfer' | 'left' | 'right' | 'refresh' | 'search' | 'telegram' | 'theme' | 'logout' | 'eye' | 'eyeoff' | 'check' | 'calendar' | 'food' | 'tag' | 'chart' | 'target' | 'plus' | 'edit' | 'trash' | 'close' | 'trend' | 'user' | 'star' | 'starfill'
+  | 'utensils' | 'car' | 'bag' | 'bolt' | 'film' | 'heart' | 'book' | 'plane' | 'gift' | 'repeat' | 'coffee' | 'briefcase' | 'coin' | 'phone' | 'tv' | 'music' | 'cloud' | 'dots' | 'receipt'
 
 const paths: Record<IconName, ReactNode> = {
   home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /><path d="M9 21v-8h6v8" /></>,
@@ -32,6 +33,25 @@ const paths: Record<IconName, ReactNode> = {
   user: <><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" /></>,
   star: <path d="m12 3 2.9 6.3 6.8.7-5.1 4.6 1.5 6.7-6.1-3.6-6.1 3.6 1.5-6.7-5.1-4.6 6.8-.7Z" />,
   starfill: <path fill="currentColor" d="m12 3 2.9 6.3 6.8.7-5.1 4.6 1.5 6.7-6.1-3.6-6.1 3.6 1.5-6.7-5.1-4.6 6.8-.7Z" />,
+  utensils: <path d="M7 3v8a2 2 0 0 0 2 2v8M11 3v6a2 2 0 0 1-2 2M17 21V3c-2 1-3 4-3 7s1 4 3 4" />,
+  car: <path d="M5 16V11l2-5h10l2 5v5M3 16h18v3H3zM7.5 13h.01M16.5 13h.01" />,
+  bag: <path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2" />,
+  bolt: <path d="M13 2 5 13h6l-1 9 8-11h-6z" />,
+  film: <path d="M4 5h16v14H4zM8 5v14M16 5v14M4 9h4M4 15h4M16 9h4M16 15h4" />,
+  heart: <path d="M12 20s-7-4.5-8-10a4.5 4.5 0 0 1 8-2.5A4.5 4.5 0 0 1 20 10c-1 5.5-8 10-8 10z" />,
+  book: <path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h10" />,
+  plane: <path d="M3 13l18-8-6 15-3-6zM12 14l9-9" />,
+  gift: <path d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-2 0-4-1-4-3s3-2 4 3zM12 7c2 0 4-1 4-3s-3-2-4 3z" />,
+  repeat: <path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4" />,
+  coffee: <path d="M5 9h11v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4zM16 11h2a2 2 0 0 1 0 4h-2M8 3v3M12 3v3" />,
+  briefcase: <path d="M4 8h16v11H4zM9 8V5h6v3M4 13h16" />,
+  coin: <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v10M9.5 9.5c0-1 1.2-1.5 2.5-1.5s2.5.5 2.5 1.7-1.2 1.5-2.5 1.8-2.5.6-2.5 1.8 1.2 1.7 2.5 1.7 2.5-.6 2.5-1.6" />,
+  phone: <path d="M8 3h8v18H8zM11 18h2" />,
+  tv: <path d="M3 6h18v11H3zM8 21h8" />,
+  music: <path d="M9 18V6l10-2v12M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3zM19 16a3 3 0 1 1-3-3 3 3 0 0 1 3 3z" />,
+  cloud: <path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1A4.5 4.5 0 0 1 17 18z" />,
+  dots: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
+  receipt: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" />,
 }
 
 export function Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {

@@ -32,7 +32,14 @@ export interface Category {
   name: string
   color: string
   type: CategoryType
+  icon: string
 }
+
+/** Ikon yang bisa dipilih untuk kategori kustom. "receipt" dipakai khusus kategori sistem "Biaya & Admin", tidak ditawarkan di pemilih. */
+export const CATEGORY_ICONS = [
+  'utensils', 'car', 'bag', 'bolt', 'home', 'film', 'heart', 'book', 'plane', 'gift',
+  'repeat', 'coffee', 'briefcase', 'trend', 'coin', 'phone', 'tv', 'music', 'cloud', 'dots',
+]
 
 export interface Budget {
   total: number
@@ -55,25 +62,25 @@ export interface FinancialState {
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'food', name: 'Makan & Minum', color: '#88a93c', type: 'expense' },
-  { id: 'transport', name: 'Transportasi', color: '#508bd5', type: 'expense' },
-  { id: 'shopping', name: 'Belanja', color: '#ae78cd', type: 'expense' },
-  { id: 'bills', name: 'Tagihan & Utilitas', color: '#df9a40', type: 'expense' },
-  { id: 'subs', name: 'Langganan', color: '#718acb', type: 'expense' },
-  { id: 'home', name: 'Rumah & Sewa', color: '#c28e65', type: 'expense' },
-  { id: 'entertainment', name: 'Hiburan', color: '#d56a99', type: 'expense' },
-  { id: 'health', name: 'Kesehatan', color: '#4aab9b', type: 'expense' },
-  { id: 'edu', name: 'Pendidikan', color: '#a38a53', type: 'expense' },
-  { id: 'travel', name: 'Liburan', color: '#40a1b5', type: 'expense' },
-  { id: 'gift', name: 'Hadiah & Donasi', color: '#bf7e9f', type: 'expense' },
-  { id: 'other', name: 'Lainnya', color: '#8a9484', type: 'expense' },
-  { id: 'fees', name: 'Biaya & Admin', color: '#8a96ad', type: 'expense' },
-  { id: 'salary', name: 'Gaji', color: '#88a93c', type: 'income' },
-  { id: 'bonus', name: 'Bonus', color: '#cf9f38', type: 'income' },
-  { id: 'freelance', name: 'Freelance', color: '#508bd5', type: 'income' },
-  { id: 'business', name: 'Bisnis', color: '#4aab9b', type: 'income' },
-  { id: 'invest', name: 'Investasi', color: '#ae78cd', type: 'income' },
-  { id: 'otherinc', name: 'Pemasukan lain', color: '#8a9484', type: 'income' },
+  { id: 'food', name: 'Makan & Minum', color: '#88a93c', type: 'expense', icon: 'utensils' },
+  { id: 'transport', name: 'Transportasi', color: '#508bd5', type: 'expense', icon: 'car' },
+  { id: 'shopping', name: 'Belanja', color: '#ae78cd', type: 'expense', icon: 'bag' },
+  { id: 'bills', name: 'Tagihan & Utilitas', color: '#df9a40', type: 'expense', icon: 'bolt' },
+  { id: 'subs', name: 'Langganan', color: '#718acb', type: 'expense', icon: 'repeat' },
+  { id: 'home', name: 'Rumah & Sewa', color: '#c28e65', type: 'expense', icon: 'home' },
+  { id: 'entertainment', name: 'Hiburan', color: '#d56a99', type: 'expense', icon: 'film' },
+  { id: 'health', name: 'Kesehatan', color: '#4aab9b', type: 'expense', icon: 'heart' },
+  { id: 'edu', name: 'Pendidikan', color: '#a38a53', type: 'expense', icon: 'book' },
+  { id: 'travel', name: 'Liburan', color: '#40a1b5', type: 'expense', icon: 'plane' },
+  { id: 'gift', name: 'Hadiah & Donasi', color: '#bf7e9f', type: 'expense', icon: 'gift' },
+  { id: 'other', name: 'Lainnya', color: '#8a9484', type: 'expense', icon: 'dots' },
+  { id: 'fees', name: 'Biaya & Admin', color: '#8a96ad', type: 'expense', icon: 'receipt' },
+  { id: 'salary', name: 'Gaji', color: '#88a93c', type: 'income', icon: 'briefcase' },
+  { id: 'bonus', name: 'Bonus', color: '#cf9f38', type: 'income', icon: 'gift' },
+  { id: 'freelance', name: 'Freelance', color: '#508bd5', type: 'income', icon: 'coffee' },
+  { id: 'business', name: 'Bisnis', color: '#4aab9b', type: 'income', icon: 'bag' },
+  { id: 'invest', name: 'Investasi', color: '#ae78cd', type: 'income', icon: 'trend' },
+  { id: 'otherinc', name: 'Pemasukan lain', color: '#8a9484', type: 'income', icon: 'coin' },
 ]
 
 export function newId(prefix: string): string {
@@ -131,6 +138,7 @@ export function readFinancialState(value: unknown): FinancialState {
       id: item.id, name: item.name,
       color: typeof item.color === 'string' && /^#[a-f\d]{6}$/i.test(item.color) ? item.color : '#8a9484',
       type: item.type === 'income' ? 'income' : 'expense',
+      icon: typeof item.icon === 'string' && CATEGORY_ICONS.includes(item.icon) ? item.icon : 'dots',
     })
   }
   if (Array.isArray(root.goals)) for (const item of root.goals) {
@@ -153,10 +161,10 @@ export function readFinancialState(value: unknown): FinancialState {
 }
 
 export function categoryFor(tx: Transaction, state: FinancialState): Category {
-  if (tx.type === 'transfer') return { id: 'transfer', name: 'Transfer antar akun', color: '#8a9484', type: 'expense' }
+  if (tx.type === 'transfer') return { id: 'transfer', name: 'Transfer antar akun', color: '#8a9484', type: 'expense', icon: 'transfer' }
   return state.cats.find(category => category.id === tx.cat_id)
     ?? DEFAULT_CATEGORIES.find(category => category.id === tx.cat_id)
-    ?? { id: tx.cat_id ?? (tx.type === 'income' ? 'otherinc' : 'other'), name: tx.type === 'income' ? 'Pemasukan lain' : 'Lainnya', color: '#8a9484', type: tx.type === 'income' ? 'income' : 'expense' }
+    ?? { id: tx.cat_id ?? (tx.type === 'income' ? 'otherinc' : 'other'), name: tx.type === 'income' ? 'Pemasukan lain' : 'Lainnya', color: '#8a9484', type: tx.type === 'income' ? 'income' : 'expense', icon: 'dots' }
 }
 
 /** Kategori "Biaya & Admin" untuk biaya transfer — dipisah dari categoryFor karena biaya menumpang pada transaksi transfer, bukan kategori baris itu sendiri. */
@@ -276,7 +284,7 @@ export function budgetStats(transactionsForMonth: readonly Transaction[], state:
   const categoryIds = new Set([...limitedIds, ...spentByCategory.keys()])
   const categories: BudgetCategoryStat[] = [...categoryIds].map(id => {
     const category = state.cats.find(item => item.id === id) ?? DEFAULT_CATEGORIES.find(item => item.id === id)
-      ?? { id, name: id, color: '#8a9484', type: 'expense' as const }
+      ?? { id, name: id, color: '#8a9484', type: 'expense' as const, icon: 'dots' }
     return { ...category, limit: state.budget.cats[id] ?? 0, spent: spentByCategory.get(id) ?? 0 }
   }).sort((a, b) => b.spent - a.spent || b.limit - a.limit)
   const totalLimit = state.budget.total > 0 ? state.budget.total : limitedIds.reduce((sum, id) => sum + state.budget.cats[id], 0)
