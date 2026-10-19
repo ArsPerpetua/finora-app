@@ -68,3 +68,31 @@ export function parseMessage(text) {
 
   return { type, amount, title: title ? title[0].toUpperCase() + title.slice(1) : '', catId };
 }
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Cocokkan kata dalam teks dengan nama salah satu akun pengguna (mis. "bca", "gopay", "tunai"
+ * cocok kalau pengguna punya akun bernama begitu). Kalau beberapa akun cocok, utamakan nama
+ * akun terpanjang (paling spesifik). Mengembalikan null jika tidak ada yang cocok.
+ */
+export function matchAccount(text, accounts) {
+  const haystack = String(text || '');
+  let best = null;
+  for (const account of accounts || []) {
+    const name = String(account?.name || '').trim();
+    if (!name) continue;
+    const re = new RegExp(`\\b${escapeRegExp(name)}\\b`, 'i');
+    if (re.test(haystack) && (!best || name.length > best.name.length)) best = { id: account.id, name };
+  }
+  return best;
+}
+
+/** Buang kemunculan `token` (hasil matchAccount) dari teks, lalu rapikan spasi berlebih. */
+export function stripToken(text, token) {
+  if (!token) return text;
+  const re = new RegExp(`\\b${escapeRegExp(token)}\\b`, 'i');
+  return text.replace(re, '').replace(/\s+/g, ' ').trim();
+}
