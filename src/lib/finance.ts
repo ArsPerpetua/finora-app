@@ -149,12 +149,21 @@ export function categoryFor(tx: Transaction, state: FinancialState): Category {
     ?? { id: tx.cat_id ?? (tx.type === 'income' ? 'otherinc' : 'other'), name: tx.type === 'income' ? 'Pemasukan lain' : 'Lainnya', color: '#8a9484', type: tx.type === 'income' ? 'income' : 'expense' }
 }
 
+function categoryOptions(state: FinancialState, type: CategoryType): Category[] {
+  const map = new Map<string, Category>()
+  for (const category of DEFAULT_CATEGORIES) if (category.type === type) map.set(category.id, category)
+  for (const category of state.cats) if (category.type === type) map.set(category.id, category)
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'id-ID'))
+}
+
 /** Kategori pengeluaran yang bisa dipilih pengguna: bawaan + kustom, tanpa duplikat id. */
 export function expenseCategoryOptions(state: FinancialState): Category[] {
-  const map = new Map<string, Category>()
-  for (const category of DEFAULT_CATEGORIES) if (category.type === 'expense') map.set(category.id, category)
-  for (const category of state.cats) if (category.type === 'expense') map.set(category.id, category)
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'id-ID'))
+  return categoryOptions(state, 'expense')
+}
+
+/** Kategori pemasukan yang bisa dipilih pengguna: bawaan + kustom, tanpa duplikat id. */
+export function incomeCategoryOptions(state: FinancialState): Category[] {
+  return categoryOptions(state, 'income')
 }
 
 export function upsertAccount(state: FinancialState, account: Account): FinancialState {

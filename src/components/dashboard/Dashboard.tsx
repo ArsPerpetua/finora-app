@@ -14,6 +14,7 @@ import { CashFlowChart } from './CashFlowChart'
 import { GoalsScreen } from './Goals'
 import { Icon } from './Icon'
 import { ReportScreen } from './Report'
+import { TransactionFormDialog } from './TransactionForm'
 import { TransactionList } from './TransactionList'
 
 interface Props {
@@ -46,6 +47,10 @@ function TelegramAction({ className = 'dash-button dash-button-primary' }: { cla
   return botUrl
     ? <a className={className} href={botUrl} target="_blank" rel="noopener noreferrer"><Icon name="telegram" size={18} />Catat lewat Telegram<span className="sr-only">, buka tab baru</span></a>
     : <a className={className} href="#telegram"><Icon name="telegram" size={18} />Tautkan Telegram</a>
+}
+
+function AddTransactionButton({ className = 'dash-button dash-button-primary dash-add-tx', onClick }: { className?: string; onClick: () => void }) {
+  return <button type="button" className={className} onClick={onClick}><Icon name="plus" size={18} /><span>Catat transaksi</span></button>
 }
 
 export function EmptyState({ title, children }: { title: string; children: ReactNode }) {
@@ -85,7 +90,7 @@ function Categories({ transactions, state }: { transactions: Transaction[]; stat
   </section>
 }
 
-function Overview({ transactions, state, month, linked, active }: { transactions: Transaction[]; state: FinancialState; month: string; linked: boolean; active: boolean }) {
+function Overview({ transactions, state, month, linked, active, onAddTransaction }: { transactions: Transaction[]; state: FinancialState; month: string; linked: boolean; active: boolean; onAddTransaction: () => void }) {
   const [hideBalance, setHideBalance] = useState(false)
   const selected = useMemo(() => sortTransactions(transactions.filter(tx => tx.tx_date.startsWith(month + '-'))), [transactions, month])
   const totals = summarize(selected)
@@ -104,7 +109,11 @@ function Overview({ transactions, state, month, linked, active }: { transactions
     <section className="dash-card dash-quick dash-span-5" aria-labelledby="quick-title">
       <span className="dash-eyebrow">CATATAN KECIL, LANGKAH BESAR</span><h2 id="quick-title">Kenali keuangan Anda,<br />satu catatan setiap hari.</h2>
       <p>Kirim <code>makan siang 25000</code> ke bot. Catatan Anda akan tersimpan dan tampil di dashboard.</p>
-      <div className="dash-quick-links"><Link to="/app/transaksi" className="dash-quick-link"><span><Icon name="list" />Lihat transaksi</span><Icon name="right" size={17} /></Link><TelegramAction className="dash-quick-link" /></div>
+      <div className="dash-quick-links">
+        {active && <button type="button" className="dash-quick-link" onClick={onAddTransaction}><span><Icon name="plus" />Catat transaksi</span><Icon name="right" size={17} /></button>}
+        <Link to="/app/transaksi" className="dash-quick-link"><span><Icon name="list" />Lihat transaksi</span><Icon name="right" size={17} /></Link>
+        <TelegramAction className="dash-quick-link" />
+      </div>
       <span className={`dash-connection ${linked && active ? 'is-linked' : ''}`}><Icon name={linked && active ? 'check' : 'telegram'} size={15} />{!active ? 'Aktifkan akses untuk mulai mencatat' : linked ? 'Telegram Anda sudah terhubung' : 'Tautkan Telegram Anda di bawah'}</span>
     </section>
 
@@ -120,12 +129,12 @@ function Overview({ transactions, state, month, linked, active }: { transactions
     <Categories transactions={selected} state={state} />
 
     <section className="dash-card dash-span-12" aria-labelledby="recent-title"><div className="dash-card-heading"><div><h2 id="recent-title">Transaksi terbaru</h2><p className="dash-muted">Catatan pada {monthLabel(month)}</p></div><Link className="dash-text-link" to="/app/transaksi">Lihat semua <Icon name="right" size={15} /></Link></div>
-      {selected.length ? <TransactionList transactions={selected.slice(0, 6)} state={state} /> : <><EmptyState title="Belum ada transaksi bulan ini">Mulai dengan mencatat pemasukan atau pengeluaran lewat Telegram.</EmptyState><div className="dash-empty-action"><TelegramAction /></div></>}
+      {selected.length ? <TransactionList transactions={selected.slice(0, 6)} state={state} /> : <><EmptyState title="Belum ada transaksi bulan ini">Mulai dengan mencatat pemasukan atau pengeluaran lewat web atau Telegram.</EmptyState><div className="dash-empty-action">{active && <AddTransactionButton onClick={onAddTransaction} />}<TelegramAction /></div></>}
     </section>
   </div>
 }
 
-function Transactions({ transactions, state, month }: { transactions: Transaction[]; state: FinancialState; month: string }) {
+function Transactions({ transactions, state, month, active, onAddTransaction }: { transactions: Transaction[]; state: FinancialState; month: string; active: boolean; onAddTransaction: () => void }) {
   const [query, setQuery] = useState('')
   const [type, setType] = useState<TransactionType | 'all'>('all')
   const [category, setCategory] = useState('all')
@@ -137,7 +146,7 @@ function Transactions({ transactions, state, month }: { transactions: Transactio
   const totals = summarize(filtered)
   const categories = [...new Map(transactions.map(tx => { const item = categoryFor(tx, state); return [item.id, item] as const })).values()].sort((a, b) => a.name.localeCompare(b.name, 'id-ID'))
   return <section className="dash-card" aria-labelledby="transactions-title">
-    <div className="dash-card-heading"><div><h2 id="transactions-title">Semua catatan Anda</h2><p className="dash-muted">Telusuri pemasukan, pengeluaran, dan transfer.</p></div><span className="dash-count">{filtered.length} transaksi</span></div>
+    <div className="dash-card-heading"><div><h2 id="transactions-title">Semua catatan Anda</h2><p className="dash-muted">Telusuri pemasukan, pengeluaran, dan transfer.</p></div><div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span className="dash-count">{filtered.length} transaksi</span>{active && <AddTransactionButton className="dash-card-add" onClick={onAddTransaction} />}</div></div>
     <div className="dash-filters"><div className="dash-search"><label className="sr-only" htmlFor="transaction-search">Cari transaksi</label><Icon name="search" size={18} /><input id="transaction-search" type="search" placeholder="Cari judul, catatan, kategori…" value={query} onChange={event => setQuery(event.target.value)} /></div>
       <label className="dash-filter"><span>Jenis transaksi</span><select aria-label="Jenis transaksi" value={type} onChange={event => { setType(event.target.value as TransactionType | 'all'); setCategory('all') }}><option value="all">Semua jenis</option><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option><option value="transfer">Transfer</option></select></label>
       <label className="dash-filter"><span>Kategori</span><select aria-label="Kategori" value={category} onChange={event => setCategory(event.target.value)}><option value="all">Semua kategori</option>{categories.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
@@ -166,6 +175,7 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
   const toggleTheme = useTheme()
   const location = useLocation()
   const [month, setMonth] = useState(() => todayMakassar().slice(0, 7))
+  const [txOpen, setTxOpen] = useState(false)
   const page = (Object.keys(PAGES) as PageKey[]).find(key => PAGES[key].match.test(location.pathname))
   const displayName = name.trim() || 'Anda'
   const initials = displayName.split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()
@@ -177,19 +187,19 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
       <div className="dash-sidebar-bottom"><div className="dash-sidebar-note"><span className="dash-small-spark">✦</span><strong>Selangkah lebih teratur.</strong><p>Kenali uang Anda.<br />Rencanakan hari esok.</p></div><div className="dash-user"><span className="dash-avatar">{initials}</span><div><strong>{displayName}</strong><span>{isActive ? 'Akses aktif' : 'Akses perlu diaktifkan'}</span></div></div><button type="button" className="dash-logout" onClick={() => void onSignOut()}><Icon name="logout" size={17} />Keluar</button></div>
     </aside>
     <main className="dash-main" id="dashboard-content" tabIndex={-1}>
-      <header className="dash-topbar"><div><p className="dash-eyebrow">RUANG KEUANGAN ANDA</p><h1>{PAGES[page].title}</h1><p className="dash-greeting">Halo, {displayName}. {PAGES[page].greeting}</p></div><div className="dash-top-actions"><button className="dash-icon-button" type="button" onClick={toggleTheme} aria-label="Ganti tema terang atau gelap"><Icon name="theme" /></button><button className="dash-mobile-logout dash-icon-button" type="button" onClick={() => void onSignOut()} aria-label="Keluar dari akun"><Icon name="logout" /></button><span className="dash-desktop-action"><TelegramAction /></span></div></header>
+      <header className="dash-topbar"><div><p className="dash-eyebrow">RUANG KEUANGAN ANDA</p><h1>{PAGES[page].title}</h1><p className="dash-greeting">Halo, {displayName}. {PAGES[page].greeting}</p></div><div className="dash-top-actions">{isActive && <AddTransactionButton onClick={() => setTxOpen(true)} />}<button className="dash-icon-button" type="button" onClick={toggleTheme} aria-label="Ganti tema terang atau gelap"><Icon name="theme" /></button><button className="dash-mobile-logout dash-icon-button" type="button" onClick={() => void onSignOut()} aria-label="Keluar dari akun"><Icon name="logout" /></button><span className="dash-desktop-action"><TelegramAction /></span></div></header>
       {(page === 'beranda' || page === 'transaksi' || page === 'anggaran' || page === 'laporan') && <div className="dash-period-row"><MonthPicker month={month} onChange={setMonth} /><div className="dash-update"><span className="dash-updated-label" role="status">{data.loading ? 'Memperbarui catatan…' : data.updatedAt ? `Diperbarui ${timeFormat.format(data.updatedAt)} WITA` : 'Belum ada data terbaru'}</span><button type="button" className="dash-button dash-refresh" disabled={data.loading} onClick={data.refresh}><Icon name="refresh" size={16} className={data.loading ? 'dash-spin' : ''} /><span>Perbarui</span></button></div></div>}
       {!isActive && <div className="dash-notice"><Icon name="calendar" /><div><strong>{expiry ? 'Masa aktif Anda telah berakhir.' : 'Aktifkan akun Anda.'}</strong><p>Riwayat tetap dapat dibaca. Masukkan kode lisensi pada bagian akses akun untuk melanjutkan pencatatan.</p><a href="#telegram">Aktivasi akses akun <span aria-hidden="true">→</span></a></div></div>}
       {data.error && <div className="dash-error" role="alert"><strong>{data.error}</strong>{data.hasData && <p>Ringkasan masih menampilkan pembaruan terakhir.</p>}<button type="button" className="dash-text-link" onClick={data.refresh}>Coba lagi</button></div>}
       <div aria-busy={data.loading}>
         {!data.hasData && data.loading ? <div className="dash-skeleton" role="status"><span className="sr-only">Memuat ringkasan dan transaksi Anda.</span><div /><div /><div /></div>
           : data.hasData ? (
-            page === 'transaksi' ? <Transactions transactions={data.transactions} state={data.financialState} month={month} />
+            page === 'transaksi' ? <Transactions transactions={data.transactions} state={data.financialState} month={month} active={isActive} onAddTransaction={() => setTxOpen(true)} />
               : page === 'akun' ? <AccountsScreen state={data.financialState} onUpdate={data.updateState} />
                 : page === 'anggaran' ? <BudgetScreen transactions={data.transactions} state={data.financialState} month={month} onUpdate={data.updateState} />
                   : page === 'tabungan' ? <GoalsScreen state={data.financialState} onUpdate={data.updateState} />
                     : page === 'laporan' ? <ReportScreen transactions={data.transactions} state={data.financialState} month={month} />
-                      : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} />
+                      : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} onAddTransaction={() => setTxOpen(true)} />
           )
             : <section className="dash-card"><EmptyState title="Catatan belum dapat dimuat">Gunakan tombol Coba lagi untuk membaca ulang data Anda.</EmptyState></section>}
       </div>
@@ -197,5 +207,6 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
       <footer className="dash-footer"><span>Finora <span aria-hidden="true">·</span> Catatan hari ini, rencana esok hari.</span><span>Rupiah · WITA</span></footer>
     </main>
     <Navigation mobile />
+    <TransactionFormDialog open={txOpen} onClose={() => setTxOpen(false)} userId={userId} state={data.financialState} onSaved={data.refresh} />
   </div>
 }
