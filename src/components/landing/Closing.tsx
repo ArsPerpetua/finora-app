@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { config } from '../../config'
 
 export function Closing({ onHaveCode }: { onHaveCode: () => void }) {
@@ -16,7 +17,9 @@ export function Closing({ onHaveCode }: { onHaveCode: () => void }) {
         <div className="wrap row">
           <span>Know your money. Control your future.</span>
           <span>
-            © 2026 Finora &nbsp;{' '}
+            © 2026 Finora &nbsp;·{' '}
+            <Link to="/privasi">Kebijakan Privasi</Link> &nbsp;·{' '}
+            <Link to="/syarat">Syarat &amp; Ketentuan</Link> &nbsp;·{' '}
             <a href={config.supportUrl} target="_blank" rel="noopener">Hubungi kami</a>
           </span>
         </div>

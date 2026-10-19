@@ -5,6 +5,8 @@ import Landing from './pages/Landing'
 
 const AppHome = lazy(() => import('./pages/AppHome'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+const Terms = lazy(() => import('./pages/Terms'))
 
 export default function App() {
   return (
@@ -14,6 +16,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/privasi" element={<Privacy />} />
+            <Route path="/syarat" element={<Terms />} />
             <Route path="/app/*" element={<AppHome />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
