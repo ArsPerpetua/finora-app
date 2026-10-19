@@ -32,14 +32,16 @@ untuk memasang ulang dependensi dari lockfile. Jangan menyalin `node_modules`
 dari komputer atau OS lain. Lihat juga [laporan npm tentang dependensi optional](https://github.com/npm/cli/issues/4828).
 
 ## Siapkan Supabase (sekali)
-1. SQL Editor: jalankan `supabase/schema.sql`, lalu `supabase/002_check_code.sql`, lalu `supabase/003_transactions_full.sql`.
+1. SQL Editor, jalankan berurutan: `supabase/schema.sql`, lalu tiap file bernomor di `supabase/` dari yang terkecil (saat ini `002` sampai `006`). Semua aman dijalankan ulang.
 2. Authentication → Providers → Email: untuk uji coba matikan "Confirm email".
-3. Buat kode lisensi: `npm run codes -- 20 30`, lalu tempel `scripts/out/insert-30d.sql` ke SQL Editor.
+3. Authentication → URL Configuration: tambahkan `<domain-produksi>/reset-password` dan `http://localhost:5173/reset-password` ke **Redirect URLs** (dipakai alur lupa kata sandi, A14).
+4. Buat kode lisensi: `npm run codes -- 20 30`, lalu tempel `scripts/out/insert-30d.sql` ke SQL Editor.
 
 ## Deploy (Netlify)
 Build command `npm run build`, publish `dist` (sudah di `netlify.toml`). Isi environment variable:
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_CHECKOUT_URL`, `VITE_SUPPORT_URL`, `VITE_TELEGRAM_BOT_USERNAME`,
 dan untuk bot: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (rahasia), `TELEGRAM_BOT_TOKEN` (rahasia), `TELEGRAM_WEBHOOK_SECRET` (rahasia), `APP_URL`.
 Setelah mengubah variabel, deploy ulang. Pasang webhook bot: lihat `docs/README-BOT.md`.
+Uptime monitor, jadwal backup, dan rotasi secret: lihat `docs/OPERASIONAL.md`.
 
 Catatan: `VITE_*` ikut tertanam di hasil build, jadi **jangan** menandainya sebagai secret di Netlify (build akan gagal karena pemindai rahasia).

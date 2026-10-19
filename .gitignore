@@ -6,6 +6,7 @@ dev-dist
 !.env.example
 .netlify
 scripts/out
+backups
 *.log
 .DS_Store
 *.tsbuildinfo

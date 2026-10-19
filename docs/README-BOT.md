@@ -20,14 +20,29 @@ Folder `finora` ini di-deploy ke Netlify (lewat GitHub atau drag-and-drop). Buat
 `https://NAMA-SITUS.netlify.app/.netlify/functions/telegram`
 
 ## 4. Daftarkan webhook ke Telegram
-Ganti tiga nilai di bawah, lalu buka URL ini di browser:
+Isi `TELEGRAM_BOT_TOKEN`, `APP_URL`, dan `TELEGRAM_WEBHOOK_SECRET` di `.env` lokal (nilai yang sama dengan yang
+diisi di Netlify), lalu jalankan:
 
 ```
-https://api.telegram.org/botTOKEN/setWebhook?url=https://NAMA-SITUS.netlify.app/.netlify/functions/telegram&secret_token=SECRET
+node scripts/set-telegram-webhook.mjs
 ```
+
+**Jangan** mendaftarkan webhook dengan menempel token dan secret langsung ke URL yang dibuka di browser — URL
+begitu gampang tersalin tanpa sadar ke riwayat browser, log proxy, atau (pernah terjadi) ke obrolan saat minta
+bantuan debug. Skrip di atas mengirim token dan secret lewat POST request, tidak pernah lewat URL, dan tidak
+pernah mencetak token ke konsol.
 
 Jawaban yang benar: `{"ok":true,"result":true,"description":"Webhook was set"}`.
-Cek status kapan saja lewat `https://api.telegram.org/botTOKEN/getWebhookInfo`.
+Cek status kapan saja: `node scripts/set-telegram-webhook.mjs --status`.
+
+### Putar ulang (rotate) `TELEGRAM_WEBHOOK_SECRET`
+Lakukan ini kalau nilai lama pernah ikut tersalin ke tempat yang tidak seharusnya (chat, screenshot, log) —
+nilai lama tidak otomatis berhenti berlaku sampai diganti di kedua sisi (Netlify **dan** Telegram):
+
+1. `node scripts/set-telegram-webhook.mjs --new-secret` — cetak satu nilai acak baru.
+2. Isi nilai itu sebagai `TELEGRAM_WEBHOOK_SECRET` di Netlify (Site configuration > Environment variables), lalu **deploy ulang**.
+3. Perbarui juga `TELEGRAM_WEBHOOK_SECRET` di `.env` lokal, lalu jalankan `node scripts/set-telegram-webhook.mjs` supaya Telegram memakai secret yang baru.
+4. Pastikan dengan `node scripts/set-telegram-webhook.mjs --status` — nilai secret tidak ditampilkan Telegram, tapi kirim pesan uji ke bot untuk memastikan masih berfungsi.
 
 ## 5. Uji end-to-end
 1. Buat akun di Supabase (Authentication > Users > Add user) dan jalankan `select activate_code('KODE')` dari akun itu,
