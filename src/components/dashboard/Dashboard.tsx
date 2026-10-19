@@ -267,7 +267,7 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
         {!data.hasData && data.loading ? <div className="dash-skeleton" role="status"><span className="sr-only">Memuat ringkasan dan transaksi Anda.</span><div /><div /><div /></div>
           : data.hasData ? (
             page === 'transaksi' ? <Transactions transactions={data.transactions} state={data.financialState} month={month} active={isActive} onAddTransaction={openAddTransaction} onEditTransaction={openEditTransaction} onRefresh={data.refresh} />
-              : page === 'akun' ? <AccountsScreen state={data.financialState} onUpdate={data.updateState} />
+              : page === 'akun' ? <AccountsScreen state={data.financialState} transactions={data.transactions} onUpdate={data.updateState} />
                 : page === 'anggaran' ? <BudgetScreen transactions={data.transactions} state={data.financialState} month={month} onUpdate={data.updateState} />
                   : page === 'tabungan' ? <GoalsScreen state={data.financialState} onUpdate={data.updateState} />
                     : page === 'laporan' ? <ReportScreen transactions={data.transactions} state={data.financialState} month={month} />

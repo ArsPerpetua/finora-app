@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   budgetStats, cashFlow, categoryComparison, categoryFor, contributeToGoal, expenseCategories,
-  expenseCategoryOptions, filterTransactions, goalProgress, readFinancialState, removeAccount,
-  removeCategory, removeGoal, setBudgetTotal, setCategoryBudget, shiftMonth, sortTransactions,
+  expenseCategoryOptions, filterTransactions, goalProgress, isAccountInUse, readFinancialState, removeAccount,
+  removeCategory, removeGoal, setBudgetTotal, setCategoryBudget, setDefaultAccount, shiftMonth, sortTransactions,
   summarize, todayMakassar, totalBalance, upsertAccount, upsertCategory, upsertGoal,
 } from '../src/lib/finance.ts'
 
@@ -78,7 +78,7 @@ test('laporan bulanan membandingkan kategori pengeluaran dengan bulan sebelumnya
 })
 
 test('kategori bawaan bot dan metadata kosong ditangani tanpa data contoh', () => {
-  assert.deepEqual(readFinancialState(null), { accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } })
+  assert.deepEqual(readFinancialState(null), { accounts: [], cats: [], goals: [], defaultAccountId: null, budget: { total: 0, cats: {} } })
   assert.equal(categoryFor(tx(), { accounts: [], cats: [] }).name, 'Makan & Minum')
   assert.equal(categoryFor(tx({ cat_id: 'deleted' }), state).name, 'Lainnya')
   assert.equal(readFinancialState({ cats: [{ id: 'x', name: 'X', color: 'url(https://invalid)' }] }).cats[0].color, '#8a9484')
@@ -144,6 +144,26 @@ test('filter transaksi berdasarkan akun mencocokkan akun asal maupun akun tujuan
   assert.deepEqual(filterTransactions(transactions, state, filter).map(item => item.id), ['3', '2', '1'], 'semua tx bulan ini memakai akun cash')
   assert.deepEqual(filterTransactions(transactions, state, { ...filter, account: 'bank' }).map(item => item.id), ['3'], 'transfer cocok lewat akun tujuan')
   assert.equal(filterTransactions(transactions, state, { ...filter, account: 'all' }).length, 3)
+})
+
+test('akun default untuk bot dan larangan hapus akun yang dipakai transaksi', () => {
+  let s = { accounts: [], cats: [], goals: [], defaultAccountId: null, budget: { total: 0, cats: {} } }
+  s = upsertAccount(s, { id: 'a1', name: 'Tunai', type: 'cash', opening: 100000, color: '#4f8cff' })
+  s = upsertAccount(s, { id: 'a2', name: 'BCA', type: 'bank', opening: 0, color: '#2bb892' })
+  s = setDefaultAccount(s, 'a1')
+  assert.equal(s.defaultAccountId, 'a1')
+  assert.equal(isAccountInUse('cash', transactions), true, 'tx() bawaan memakai account_id cash')
+  assert.equal(isAccountInUse('bank', transactions), true, 'tx transfer memakai to_account_id bank')
+  assert.equal(isAccountInUse('a2', transactions), false)
+  s = removeAccount(s, 'a1')
+  assert.equal(s.accounts.length, 1, 'akun tetap bisa dihapus di level state; larangan dicek UI lewat isAccountInUse')
+  assert.equal(s.defaultAccountId, null, 'akun default yang dihapus ikut dikosongkan')
+
+  const withColors = readFinancialState({ accounts: [{ id: 'x', name: 'X' }, { id: 'y', name: 'Y', color: '#ff0000' }], defaultAccountId: 'y' })
+  assert.equal(withColors.accounts[1].color, '#ff0000')
+  assert.match(withColors.accounts[0].color, /^#[a-f\d]{6}$/i, 'akun tanpa warna tersimpan mendapat warna bawaan')
+  assert.equal(withColors.defaultAccountId, 'y')
+  assert.equal(readFinancialState({ accounts: [{ id: 'x', name: 'X' }], defaultAccountId: 'tidak-ada' }).defaultAccountId, null, 'defaultAccountId yang tidak merujuk akun manapun diabaikan')
 })
 
 test('transaksi terbaru diurutkan stabil berdasarkan tanggal dan waktu pencatatan', () => {

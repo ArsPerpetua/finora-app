@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type IconName = 'home' | 'list' | 'wallet' | 'income' | 'expense' | 'transfer' | 'left' | 'right' | 'refresh' | 'search' | 'telegram' | 'theme' | 'logout' | 'eye' | 'eyeoff' | 'check' | 'calendar' | 'food' | 'tag' | 'chart' | 'target' | 'plus' | 'edit' | 'trash' | 'close' | 'trend' | 'user'
+export type IconName = 'home' | 'list' | 'wallet' | 'income' | 'expense' | 'transfer' | 'left' | 'right' | 'refresh' | 'search' | 'telegram' | 'theme' | 'logout' | 'eye' | 'eyeoff' | 'check' | 'calendar' | 'food' | 'tag' | 'chart' | 'target' | 'plus' | 'edit' | 'trash' | 'close' | 'trend' | 'user' | 'star' | 'starfill'
 
 const paths: Record<IconName, ReactNode> = {
   home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /><path d="M9 21v-8h6v8" /></>,
@@ -30,6 +30,8 @@ const paths: Record<IconName, ReactNode> = {
   close: <path d="M5 5l14 14M19 5 5 19" />,
   trend: <><path d="m3 17 6-6 4 4 8-8" /><path d="M15 7h6v6" /></>,
   user: <><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" /></>,
+  star: <path d="m12 3 2.9 6.3 6.8.7-5.1 4.6 1.5 6.7-6.1-3.6-6.1 3.6 1.5-6.7-5.1-4.6 6.8-.7Z" />,
+  starfill: <path fill="currentColor" d="m12 3 2.9 6.3 6.8.7-5.1 4.6 1.5 6.7-6.1-3.6-6.1 3.6 1.5-6.7-5.1-4.6 6.8-.7Z" />,
 }
 
 export function Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {

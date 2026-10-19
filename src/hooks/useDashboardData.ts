@@ -13,7 +13,7 @@ interface DashboardData {
   conflict: boolean
 }
 
-const emptyFinancialState: FinancialState = { accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } }
+const emptyFinancialState: FinancialState = { accounts: [], cats: [], goals: [], defaultAccountId: null, budget: { total: 0, cats: {} } }
 
 const empty = (ownerId: string): DashboardData => ({
   ownerId, transactions: [], financialState: emptyFinancialState,

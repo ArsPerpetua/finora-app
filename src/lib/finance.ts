@@ -20,7 +20,10 @@ export interface Account {
   name: string
   type: string
   opening: number
+  color: string
 }
+
+export const ACCOUNT_COLORS = ['#4f8cff', '#2bb892', '#f2a93b', '#e8625f', '#9b7bff', '#36b8d8', '#d96ba8', '#8a96ad']
 
 export type CategoryType = 'income' | 'expense'
 
@@ -48,6 +51,7 @@ export interface FinancialState {
   cats: Category[]
   budget: Budget
   goals: Goal[]
+  defaultAccountId: string | null
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -116,7 +120,10 @@ export function readFinancialState(value: unknown): FinancialState {
   if (Array.isArray(root.accounts)) for (const item of root.accounts) {
     if (!item || typeof item !== 'object' || typeof item.id !== 'string' || typeof item.name !== 'string') continue
     const opening = Number(item.opening ?? 0)
-    accounts.push({ id: item.id, name: item.name, type: String(item.type ?? 'cash'), opening: Number.isFinite(opening) ? opening : 0 })
+    accounts.push({
+      id: item.id, name: item.name, type: String(item.type ?? 'cash'), opening: Number.isFinite(opening) ? opening : 0,
+      color: typeof item.color === 'string' && /^#[a-f\d]{6}$/i.test(item.color) ? item.color : ACCOUNT_COLORS[accounts.length % ACCOUNT_COLORS.length],
+    })
   }
   if (Array.isArray(root.cats)) for (const item of root.cats) {
     if (!item || typeof item !== 'object' || typeof item.id !== 'string' || typeof item.name !== 'string') continue
@@ -141,7 +148,8 @@ export function readFinancialState(value: unknown): FinancialState {
       if (Number.isFinite(limit) && limit > 0) budgetCats[key] = limit
     }
   }
-  return { accounts, cats, goals, budget: { total: Number.isFinite(total) && total > 0 ? total : 0, cats: budgetCats } }
+  const defaultAccountId = typeof root.defaultAccountId === 'string' && accounts.some(account => account.id === root.defaultAccountId) ? root.defaultAccountId : null
+  return { accounts, cats, goals, defaultAccountId, budget: { total: Number.isFinite(total) && total > 0 ? total : 0, cats: budgetCats } }
 }
 
 export function categoryFor(tx: Transaction, state: FinancialState): Category {
@@ -185,7 +193,20 @@ export function upsertAccount(state: FinancialState, account: Account): Financia
 }
 
 export function removeAccount(state: FinancialState, id: string): FinancialState {
-  return { ...state, accounts: state.accounts.filter(item => item.id !== id) }
+  return {
+    ...state,
+    accounts: state.accounts.filter(item => item.id !== id),
+    defaultAccountId: state.defaultAccountId === id ? null : state.defaultAccountId,
+  }
+}
+
+export function setDefaultAccount(state: FinancialState, id: string | null): FinancialState {
+  return { ...state, defaultAccountId: id }
+}
+
+/** Akun yang masih dipakai transaksi tidak boleh dihapus, supaya riwayat tidak kehilangan rujukan akunnya. */
+export function isAccountInUse(accountId: string, transactions: readonly Transaction[]): boolean {
+  return transactions.some(tx => tx.account_id === accountId || tx.to_account_id === accountId)
 }
 
 export function upsertCategory(state: FinancialState, category: Category): FinancialState {
