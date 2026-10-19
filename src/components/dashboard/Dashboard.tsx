@@ -16,6 +16,7 @@ import { GoalsScreen } from './Goals'
 import { Icon, type IconName } from './Icon'
 import { OnboardingDialog } from './Onboarding'
 import { ReportScreen } from './Report'
+import { SettingsScreen } from './Settings'
 import { TransactionFormDialog } from './TransactionForm'
 import { TransactionList } from './TransactionList'
 
@@ -46,6 +47,7 @@ function Navigation({ mobile = false }: { mobile?: boolean }) {
     <NavLink to="/app/anggaran"><Icon name="chart" /><span>Anggaran</span></NavLink>
     <NavLink to="/app/tabungan"><Icon name="target" /><span>Tabungan</span></NavLink>
     <NavLink to="/app/laporan"><Icon name="trend" /><span>Laporan</span></NavLink>
+    {!mobile && <NavLink to="/app/pengaturan"><Icon name="user" /><span>Pengaturan</span></NavLink>}
     {mobile && botUrl && <a href={botUrl} target="_blank" rel="noopener noreferrer"><Icon name="telegram" /><span>Catat</span></a>}
   </nav>
 }
@@ -53,7 +55,7 @@ function Navigation({ mobile = false }: { mobile?: boolean }) {
 function TelegramAction({ className = 'dash-button dash-button-primary' }: { className?: string }) {
   return botUrl
     ? <a className={className} href={botUrl} target="_blank" rel="noopener noreferrer"><Icon name="telegram" size={18} />Catat lewat Telegram<span className="sr-only">, buka tab baru</span></a>
-    : <a className={className} href="#telegram"><Icon name="telegram" size={18} />Tautkan Telegram</a>
+    : <Link className={className} to="/app/pengaturan"><Icon name="telegram" size={18} />Tautkan Telegram</Link>
 }
 
 function AddTransactionButton({ className = 'dash-button dash-button-primary dash-add-tx', onClick }: { className?: string; onClick: () => void }) {
@@ -242,6 +244,7 @@ const PAGES = {
   anggaran: { match: /^\/app\/anggaran\/?$/, title: 'Anggaran', greeting: 'Pantau rencana pengeluaran bulanan Anda.' },
   tabungan: { match: /^\/app\/tabungan\/?$/, title: 'Tabungan', greeting: 'Rencanakan dan kejar tujuan Anda.' },
   laporan: { match: /^\/app\/laporan\/?$/, title: 'Laporan', greeting: 'Tinjau performa keuangan bulanan Anda.' },
+  pengaturan: { match: /^\/app\/pengaturan\/?$/, title: 'Pengaturan', greeting: 'Kelola profil, keamanan, dan akses akun Anda.' },
 } as const
 
 type PageKey = keyof typeof PAGES
@@ -273,9 +276,9 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
       <div className="dash-sidebar-bottom"><div className="dash-sidebar-note"><span className="dash-small-spark">✦</span><strong>Selangkah lebih teratur.</strong><p>Kenali uang Anda.<br />Rencanakan hari esok.</p></div><div className="dash-user"><span className="dash-avatar">{initials}</span><div><strong>{displayName}</strong><span>{isActive ? 'Akses aktif' : 'Akses perlu diaktifkan'}</span></div></div><button type="button" className="dash-logout" onClick={() => void onSignOut()}><Icon name="logout" size={17} />Keluar</button></div>
     </aside>
     <main className="dash-main" id="dashboard-content" tabIndex={-1}>
-      <header className="dash-topbar"><div><p className="dash-eyebrow">RUANG KEUANGAN ANDA</p><h1>{PAGES[page].title}</h1><p className="dash-greeting">Halo, {displayName}. {PAGES[page].greeting}</p></div><div className="dash-top-actions">{isActive && <AddTransactionButton onClick={openAddTransaction} />}<button className="dash-icon-button" type="button" onClick={toggleTheme} aria-label="Ganti tema terang atau gelap"><Icon name="theme" /></button><a className="dash-icon-button dash-profile-button" href="#telegram" aria-label={`Profil ${displayName}, ${isActive ? 'akses aktif' : 'akses perlu diaktifkan'}`}><span className="dash-avatar">{initials}</span></a><button className="dash-mobile-logout dash-icon-button" type="button" onClick={() => void onSignOut()} aria-label="Keluar dari akun"><Icon name="logout" /></button><span className="dash-desktop-action"><TelegramAction /></span></div></header>
+      <header className="dash-topbar"><div><p className="dash-eyebrow">RUANG KEUANGAN ANDA</p><h1>{PAGES[page].title}</h1><p className="dash-greeting">Halo, {displayName}. {PAGES[page].greeting}</p></div><div className="dash-top-actions">{isActive && <AddTransactionButton onClick={openAddTransaction} />}<button className="dash-icon-button" type="button" onClick={toggleTheme} aria-label="Ganti tema terang atau gelap"><Icon name="theme" /></button><Link className="dash-icon-button dash-profile-button" to="/app/pengaturan" aria-label={`Profil ${displayName}, ${isActive ? 'akses aktif' : 'akses perlu diaktifkan'}`}><span className="dash-avatar">{initials}</span></Link><button className="dash-mobile-logout dash-icon-button" type="button" onClick={() => void onSignOut()} aria-label="Keluar dari akun"><Icon name="logout" /></button><span className="dash-desktop-action"><TelegramAction /></span></div></header>
       {(page === 'beranda' || page === 'transaksi' || page === 'anggaran' || page === 'laporan') && <div className="dash-period-row"><MonthPicker month={month} onChange={setMonth} /><div className="dash-update"><span className="dash-updated-label" role="status">{data.loading ? 'Memperbarui catatan…' : data.updatedAt ? `Diperbarui ${timeFormat.format(data.updatedAt)} WITA` : 'Belum ada data terbaru'}</span><button type="button" className="dash-button dash-refresh" disabled={data.loading} onClick={data.refresh}><Icon name="refresh" size={16} className={data.loading ? 'dash-spin' : ''} /><span>Perbarui</span></button></div></div>}
-      {!isActive && <div className="dash-notice"><Icon name="calendar" /><div><strong>{expiry ? 'Masa aktif Anda telah berakhir.' : 'Aktifkan akun Anda.'}</strong><p>Riwayat tetap dapat dibaca. Masukkan kode lisensi pada bagian akses akun untuk melanjutkan pencatatan.</p><a href="#telegram">Aktivasi akses akun <span aria-hidden="true">→</span></a></div></div>}
+      {!isActive && <div className="dash-notice"><Icon name="calendar" /><div><strong>{expiry ? 'Masa aktif Anda telah berakhir.' : 'Aktifkan akun Anda.'}</strong><p>Riwayat tetap dapat dibaca. Masukkan kode lisensi pada bagian akses akun untuk melanjutkan pencatatan.</p><Link to="/app/pengaturan">Aktivasi akses akun <span aria-hidden="true">→</span></Link></div></div>}
       {data.error && <div className="dash-error" role="alert"><strong>{data.error}</strong>{data.hasData && <p>Ringkasan masih menampilkan pembaruan terakhir.</p>}<button type="button" className="dash-text-link" onClick={data.refresh}>Coba lagi</button></div>}
       {data.conflict && <div className="dash-notice" role="alert"><Icon name="refresh" /><div><strong>Perubahan dari perangkat lain terdeteksi.</strong><p>Simpanan terakhir Anda tetap dipakai. Muat ulang untuk melihat versi terbaru jika perlu.</p><a href="#" onClick={event => { event.preventDefault(); data.dismissConflict(); data.refresh() }}>Muat ulang <span aria-hidden="true">→</span></a></div></div>}
       <div aria-busy={data.loading}>
@@ -286,11 +289,12 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
                 : page === 'anggaran' ? <BudgetScreen transactions={data.transactions} state={data.financialState} month={month} onUpdate={data.updateState} />
                   : page === 'tabungan' ? <GoalsScreen state={data.financialState} transactions={data.transactions} userId={userId} onUpdate={data.updateState} onSaved={data.refresh} />
                     : page === 'laporan' ? <ReportScreen transactions={data.transactions} state={data.financialState} month={month} />
-                      : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} onAddTransaction={openAddTransaction} />
+                      : page === 'pengaturan' ? <SettingsScreen userId={userId} name={displayName} isActive={isActive} expiry={expiry} telegramLinked={telegramLinked}
+                        state={data.financialState} transactions={data.transactions} onToggleTheme={toggleTheme} onProfileUpdated={onProfileUpdated} onSignOut={onSignOut}>{children}</SettingsScreen>
+                        : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} onAddTransaction={openAddTransaction} />
           )
             : <section className="dash-card"><EmptyState title="Catatan belum dapat dimuat">Gunakan tombol Coba lagi untuk membaca ulang data Anda.</EmptyState></section>}
       </div>
-      <section id="telegram" className="dash-account-section" aria-label="Akses akun dan Telegram"><details open={!telegramLinked || !isActive}><summary><span><Icon name="telegram" size={19} /><strong>Akses akun & Telegram</strong></span><span className="dash-muted">{isActive && expiry ? `Aktif sampai ${expiry}` : 'Aktivasi akses'}</span></summary><div className="dash-account-panel">{children}</div></details></section>
       <footer className="dash-footer"><span>Finora <span aria-hidden="true">·</span> Catatan hari ini, rencana esok hari.</span><span>Rupiah · WITA</span></footer>
     </main>
     <Navigation mobile />
