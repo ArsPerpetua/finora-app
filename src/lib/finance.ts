@@ -12,6 +12,7 @@ export interface Transaction {
   tx_date: string
   created_at: string
   source: 'web' | 'telegram'
+  fee?: number | string
 }
 
 export interface Account {
@@ -62,6 +63,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'travel', name: 'Liburan', color: '#40a1b5', type: 'expense' },
   { id: 'gift', name: 'Hadiah & Donasi', color: '#bf7e9f', type: 'expense' },
   { id: 'other', name: 'Lainnya', color: '#8a9484', type: 'expense' },
+  { id: 'fees', name: 'Biaya & Admin', color: '#8a96ad', type: 'expense' },
   { id: 'salary', name: 'Gaji', color: '#88a93c', type: 'income' },
   { id: 'bonus', name: 'Bonus', color: '#cf9f38', type: 'income' },
   { id: 'freelance', name: 'Freelance', color: '#508bd5', type: 'income' },
@@ -149,6 +151,17 @@ export function categoryFor(tx: Transaction, state: FinancialState): Category {
     ?? { id: tx.cat_id ?? (tx.type === 'income' ? 'otherinc' : 'other'), name: tx.type === 'income' ? 'Pemasukan lain' : 'Lainnya', color: '#8a9484', type: tx.type === 'income' ? 'income' : 'expense' }
 }
 
+/** Kategori "Biaya & Admin" untuk biaya transfer — dipisah dari categoryFor karena biaya menumpang pada transaksi transfer, bukan kategori baris itu sendiri. */
+function feesCategory(state: FinancialState): Category {
+  return state.cats.find(category => category.id === 'fees')
+    ?? DEFAULT_CATEGORIES.find(category => category.id === 'fees')!
+}
+
+/** Biaya admin transfer: 0 untuk transaksi bukan transfer. */
+export function transferFee(tx: Transaction): number {
+  return tx.type === 'transfer' ? Number(tx.fee ?? 0) : 0
+}
+
 function categoryOptions(state: FinancialState, type: CategoryType): Category[] {
   const map = new Map<string, Category>()
   for (const category of DEFAULT_CATEGORIES) if (category.type === type) map.set(category.id, category)
@@ -225,11 +238,18 @@ export function budgetStats(transactionsForMonth: readonly Transaction[], state:
   const spentByCategory = new Map<string, number>()
   let totalSpent = 0
   for (const tx of transactionsForMonth) {
-    if (tx.type !== 'expense') continue
-    const amount = Number(tx.amount)
-    totalSpent += amount
-    const category = categoryFor(tx, state)
-    spentByCategory.set(category.id, (spentByCategory.get(category.id) ?? 0) + amount)
+    if (tx.type === 'expense') {
+      const amount = Number(tx.amount)
+      totalSpent += amount
+      const category = categoryFor(tx, state)
+      spentByCategory.set(category.id, (spentByCategory.get(category.id) ?? 0) + amount)
+    }
+    const fee = transferFee(tx)
+    if (fee > 0) {
+      totalSpent += fee
+      const category = feesCategory(state)
+      spentByCategory.set(category.id, (spentByCategory.get(category.id) ?? 0) + fee)
+    }
   }
   const limitedIds = Object.keys(state.budget.cats)
   const categoryIds = new Set([...limitedIds, ...spentByCategory.keys()])
@@ -258,6 +278,7 @@ export function summarize(transactions: readonly Transaction[]) {
     const amount = Number(tx.amount)
     if (tx.type === 'income') income += amount
     if (tx.type === 'expense') expense += amount
+    expense += transferFee(tx)
   }
   const net = income - expense
   return { income, expense, net, count: transactions.length, rate: income > 0 ? net / income : null }
@@ -277,6 +298,7 @@ export interface TransactionFilters {
   allMonths: boolean
   type: TransactionType | 'all'
   category: string
+  account?: string
   query: string
 }
 
@@ -286,6 +308,7 @@ export function filterTransactions(transactions: readonly Transaction[], state: 
     if (!filters.allMonths && !tx.tx_date.startsWith(filters.month + '-')) return false
     if (filters.type !== 'all' && tx.type !== filters.type) return false
     if (filters.category !== 'all' && categoryFor(tx, state).id !== filters.category) return false
+    if (filters.account && filters.account !== 'all' && tx.account_id !== filters.account && tx.to_account_id !== filters.account) return false
     const text = [tx.title, tx.note, categoryFor(tx, state).name, accountLabel(tx, state)].join(' ').toLocaleLowerCase('id-ID')
     return !query || text.includes(query)
   }))
@@ -300,11 +323,14 @@ export function cashFlow(transactions: readonly Transaction[], month: string) {
 
 export function expenseCategories(transactions: readonly Transaction[], state: FinancialState) {
   const totals = new Map<string, Category & { amount: number }>()
-  for (const tx of transactions) {
-    if (tx.type !== 'expense') continue
-    const category = categoryFor(tx, state)
+  const add = (category: Category, amount: number) => {
     const prior = totals.get(category.id)
-    totals.set(category.id, { ...category, amount: (prior?.amount ?? 0) + Number(tx.amount) })
+    totals.set(category.id, { ...category, amount: (prior?.amount ?? 0) + amount })
+  }
+  for (const tx of transactions) {
+    if (tx.type === 'expense') add(categoryFor(tx, state), Number(tx.amount))
+    const fee = transferFee(tx)
+    if (fee > 0) add(feesCategory(state), fee)
   }
   return [...totals.values()].sort((a, b) => b.amount - a.amount)
 }

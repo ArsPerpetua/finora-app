@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { CloseButton, Modal } from '../Modal'
 import {
   expenseCategoryOptions, incomeCategoryOptions, todayMakassar,
-  type FinancialState, type TransactionType,
+  type FinancialState, type Transaction, type TransactionType,
 } from '../../lib/finance'
 import { supabase } from '../../lib/supabase'
 
@@ -12,12 +12,13 @@ function parseAmount(value: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
-export function TransactionFormDialog({ open, onClose, userId, state, onSaved }: {
-  open: boolean; onClose: () => void; userId: string; state: FinancialState; onSaved: () => void
+export function TransactionFormDialog({ open, onClose, userId, state, editing, onSaved }: {
+  open: boolean; onClose: () => void; userId: string; state: FinancialState; editing?: Transaction | null; onSaved: () => void
 }) {
   const titleId = useId()
   const [type, setType] = useState<TransactionType>('expense')
   const [amount, setAmount] = useState('')
+  const [fee, setFee] = useState('')
   const [date, setDate] = useState(() => todayMakassar())
   const [accountId, setAccountId] = useState('')
   const [toAccountId, setToAccountId] = useState('')
@@ -29,12 +30,20 @@ export function TransactionFormDialog({ open, onClose, userId, state, onSaved }:
 
   const categories = type === 'income' ? incomeCategoryOptions(state) : expenseCategoryOptions(state)
 
-  // Isi ulang default setiap kali dialog dibuka, karena akun bisa saja baru selesai dimuat setelah dialog pertama kali dipasang.
+  // Isi ulang setiap kali dialog dibuka: dari transaksi yang diubah, atau default kosong untuk catatan baru.
+  // (Akun bisa saja baru selesai dimuat setelah dialog pertama kali dipasang, jadi default akun dibaca di sini.)
   useEffect(() => {
     if (!open) return
-    setType('expense'); setAmount(''); setDate(todayMakassar()); setAccountId(state.accounts[0]?.id ?? '')
-    setToAccountId(''); setCategoryId(''); setTitle(''); setNote(''); setErr('')
-  }, [open])
+    if (editing) {
+      setType(editing.type); setAmount(String(Number(editing.amount))); setFee(Number(editing.fee ?? 0) > 0 ? String(Number(editing.fee)) : '')
+      setDate(editing.tx_date); setAccountId(editing.account_id ?? ''); setToAccountId(editing.to_account_id ?? '')
+      setCategoryId(editing.cat_id ?? ''); setTitle(editing.title); setNote(editing.note)
+    } else {
+      setType('expense'); setAmount(''); setFee(''); setDate(todayMakassar()); setAccountId(state.accounts[0]?.id ?? '')
+      setToAccountId(''); setCategoryId(''); setTitle(''); setNote('')
+    }
+    setErr('')
+  }, [open, editing])
 
   function close() {
     onClose()
@@ -50,12 +59,16 @@ export function TransactionFormDialog({ open, onClose, userId, state, onSaved }:
     }
     setBusy(true)
     setErr('')
-    const { error } = await supabase.from('transactions').insert({
-      user_id: userId, type, amount: value, account_id: accountId || null,
+    const payload = {
+      type, amount: value, account_id: accountId || null,
       to_account_id: type === 'transfer' ? toAccountId : null,
       cat_id: type === 'transfer' ? null : (categoryId || null),
-      title: title.trim(), note: note.trim(), tx_date: date, source: 'web',
-    })
+      fee: type === 'transfer' ? parseAmount(fee) : 0,
+      title: title.trim(), note: note.trim(), tx_date: date,
+    }
+    const { error } = editing
+      ? await supabase.from('transactions').update(payload).eq('id', editing.id).eq('user_id', userId)
+      : await supabase.from('transactions').insert({ ...payload, user_id: userId, source: 'web' })
     setBusy(false)
     if (error) return setErr(/row-level security|permission/i.test(error.message) ? 'Akun Anda belum aktif. Aktivasi akses dulu di bagian bawah Beranda.' : 'Gagal menyimpan. Periksa koneksi Anda lalu coba lagi.')
     onSaved()
@@ -64,7 +77,7 @@ export function TransactionFormDialog({ open, onClose, userId, state, onSaved }:
 
   return <Modal open={open} onClose={close} labelledBy={titleId}>
     <div className="dlg">
-      <div className="dlg-head"><h2 id={titleId}>Catat transaksi</h2><CloseButton onClick={close} /></div>
+      <div className="dlg-head"><h2 id={titleId}>{editing ? 'Ubah transaksi' : 'Catat transaksi'}</h2><CloseButton onClick={close} /></div>
       <form onSubmit={submit} noValidate>
         <div className="field">
           <label htmlFor="tx-type">Jenis</label>
@@ -102,6 +115,10 @@ export function TransactionFormDialog({ open, onClose, userId, state, onSaved }:
               {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
           </div>}
+        {type === 'transfer' && <div className="field">
+          <label htmlFor="tx-fee">Biaya admin (opsional)</label>
+          <input id="tx-fee" inputMode="numeric" value={fee} onChange={event => setFee(event.target.value)} placeholder="0" />
+        </div>}
         <div className="field">
           <label htmlFor="tx-date">Tanggal</label>
           <input id="tx-date" type="date" value={date} onChange={event => setDate(event.target.value)} required />

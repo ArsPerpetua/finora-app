@@ -8,6 +8,7 @@ import {
   shiftMonth, sortTransactions, summarize, todayMakassar, totalBalance,
   type FinancialState, type Transaction, type TransactionType,
 } from '../../lib/finance'
+import { supabase } from '../../lib/supabase'
 import { AccountsScreen } from './Accounts'
 import { BudgetScreen } from './Budget'
 import { CashFlowChart } from './CashFlowChart'
@@ -186,27 +187,42 @@ function Overview({ transactions, state, month, linked, active, onAddTransaction
   </div>
 }
 
-function Transactions({ transactions, state, month, active, onAddTransaction }: { transactions: Transaction[]; state: FinancialState; month: string; active: boolean; onAddTransaction: () => void }) {
+function Transactions({ transactions, state, month, active, onAddTransaction, onEditTransaction, onRefresh }: {
+  transactions: Transaction[]; state: FinancialState; month: string; active: boolean
+  onAddTransaction: () => void; onEditTransaction: (tx: Transaction) => void; onRefresh: () => void
+}) {
   const [query, setQuery] = useState('')
   const [type, setType] = useState<TransactionType | 'all'>('all')
   const [category, setCategory] = useState('all')
+  const [account, setAccount] = useState('all')
   const [allMonths, setAllMonths] = useState(false)
   const [pagination, setPagination] = useState({ key: '', limit: 30 })
-  const filtered = useMemo(() => filterTransactions(transactions, state, { month, allMonths, type, category, query }), [transactions, state, month, allMonths, type, category, query])
-  const filterKey = JSON.stringify([month, allMonths, type, category, query])
+  const filtered = useMemo(() => filterTransactions(transactions, state, { month, allMonths, type, category, account, query }), [transactions, state, month, allMonths, type, category, account, query])
+  const filterKey = JSON.stringify([month, allMonths, type, category, account, query])
   const limit = pagination.key === filterKey ? pagination.limit : 30
   const totals = summarize(filtered)
   const categories = [...new Map(transactions.map(tx => { const item = categoryFor(tx, state); return [item.id, item] as const })).values()].sort((a, b) => a.name.localeCompare(b.name, 'id-ID'))
+
+  async function handleDelete(tx: Transaction) {
+    if (!window.confirm('Hapus transaksi ini? Tindakan ini tidak dapat dibatalkan.')) return
+    const { error } = await supabase.from('transactions').delete().eq('id', tx.id)
+    if (error) return window.alert(/row-level security|permission/i.test(error.message) ? 'Akun Anda belum aktif. Aktivasi akses dulu di bagian bawah Beranda.' : 'Gagal menghapus. Periksa koneksi Anda lalu coba lagi.')
+    onRefresh()
+  }
+
   return <section className="dash-card" aria-labelledby="transactions-title">
     <div className="dash-card-heading"><div><h2 id="transactions-title">Semua catatan Anda</h2><p className="dash-muted">Telusuri pemasukan, pengeluaran, dan transfer.</p></div><div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span className="dash-count">{filtered.length} transaksi</span>{active && <AddTransactionButton className="dash-card-add" onClick={onAddTransaction} />}</div></div>
     <div className="dash-filters"><div className="dash-search"><label className="sr-only" htmlFor="transaction-search">Cari transaksi</label><Icon name="search" size={18} /><input id="transaction-search" type="search" placeholder="Cari judul, catatan, kategori…" value={query} onChange={event => setQuery(event.target.value)} /></div>
       <label className="dash-filter"><span>Jenis transaksi</span><select aria-label="Jenis transaksi" value={type} onChange={event => { setType(event.target.value as TransactionType | 'all'); setCategory('all') }}><option value="all">Semua jenis</option><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option><option value="transfer">Transfer</option></select></label>
       <label className="dash-filter"><span>Kategori</span><select aria-label="Kategori" value={category} onChange={event => setCategory(event.target.value)}><option value="all">Semua kategori</option>{categories.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+      <label className="dash-filter"><span>Akun</span><select aria-label="Akun" value={account} onChange={event => setAccount(event.target.value)}><option value="all">Semua akun</option>{state.accounts.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
       <label className="dash-all-months"><input type="checkbox" checked={allMonths} onChange={event => setAllMonths(event.target.checked)} />Semua bulan</label>
     </div>
     <div className="dash-filter-summary" aria-live="polite"><div><span>Pemasukan</span><strong className="dash-positive">{rupiah(totals.income)}</strong></div><div><span>Pengeluaran</span><strong className="dash-negative">{rupiah(totals.expense)}</strong></div><div><span>Selisih</span><strong>{rupiah(totals.net)}</strong></div></div>
     <p className="dash-result-label" role="status">{filtered.length} transaksi · {allMonths ? 'Semua bulan' : monthLabel(month)}{query ? ` · Pencarian “${query}”` : ''}</p>
-    {filtered.length ? <TransactionList transactions={filtered.slice(0, limit)} state={state} /> : <EmptyState title={transactions.length ? 'Tidak ada transaksi yang cocok' : 'Catatan pertama Anda menunggu'}>{transactions.length ? 'Coba bulan lain atau ubah filter pencarian Anda.' : 'Kirim pemasukan atau pengeluaran lewat bot Telegram untuk mulai mencatat.'}</EmptyState>}
+    {filtered.length
+      ? <TransactionList transactions={filtered.slice(0, limit)} state={state} onEdit={active ? onEditTransaction : undefined} onDelete={active ? handleDelete : undefined} />
+      : <EmptyState title={transactions.length ? 'Tidak ada transaksi yang cocok' : 'Catatan pertama Anda menunggu'}>{transactions.length ? 'Coba bulan lain atau ubah filter pencarian Anda.' : 'Kirim pemasukan atau pengeluaran lewat bot Telegram untuk mulai mencatat.'}</EmptyState>}
     {filtered.length > limit && <div className="dash-load-more"><button type="button" className="dash-button" onClick={() => setPagination({ key: filterKey, limit: limit + 30 })}>Muat lebih banyak <span>({filtered.length - limit} lagi)</span></button></div>}
   </section>
 }
@@ -228,7 +244,10 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
   const location = useLocation()
   const [month, setMonth] = useState(() => todayMakassar().slice(0, 7))
   const [txOpen, setTxOpen] = useState(false)
+  const [txEditing, setTxEditing] = useState<Transaction | null>(null)
   const page = (Object.keys(PAGES) as PageKey[]).find(key => PAGES[key].match.test(location.pathname))
+  function openAddTransaction() { setTxEditing(null); setTxOpen(true) }
+  function openEditTransaction(tx: Transaction) { setTxEditing(tx); setTxOpen(true) }
   const displayName = name.trim() || 'Anda'
   const initials = displayName.split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()
   const expiry = activeUntil ? expiryFormat.format(new Date(activeUntil)) : null
@@ -239,7 +258,7 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
       <div className="dash-sidebar-bottom"><div className="dash-sidebar-note"><span className="dash-small-spark">✦</span><strong>Selangkah lebih teratur.</strong><p>Kenali uang Anda.<br />Rencanakan hari esok.</p></div><div className="dash-user"><span className="dash-avatar">{initials}</span><div><strong>{displayName}</strong><span>{isActive ? 'Akses aktif' : 'Akses perlu diaktifkan'}</span></div></div><button type="button" className="dash-logout" onClick={() => void onSignOut()}><Icon name="logout" size={17} />Keluar</button></div>
     </aside>
     <main className="dash-main" id="dashboard-content" tabIndex={-1}>
-      <header className="dash-topbar"><div><p className="dash-eyebrow">RUANG KEUANGAN ANDA</p><h1>{PAGES[page].title}</h1><p className="dash-greeting">Halo, {displayName}. {PAGES[page].greeting}</p></div><div className="dash-top-actions">{isActive && <AddTransactionButton onClick={() => setTxOpen(true)} />}<button className="dash-icon-button" type="button" onClick={toggleTheme} aria-label="Ganti tema terang atau gelap"><Icon name="theme" /></button><a className="dash-icon-button dash-profile-button" href="#telegram" aria-label={`Profil ${displayName}, ${isActive ? 'akses aktif' : 'akses perlu diaktifkan'}`}><span className="dash-avatar">{initials}</span></a><button className="dash-mobile-logout dash-icon-button" type="button" onClick={() => void onSignOut()} aria-label="Keluar dari akun"><Icon name="logout" /></button><span className="dash-desktop-action"><TelegramAction /></span></div></header>
+      <header className="dash-topbar"><div><p className="dash-eyebrow">RUANG KEUANGAN ANDA</p><h1>{PAGES[page].title}</h1><p className="dash-greeting">Halo, {displayName}. {PAGES[page].greeting}</p></div><div className="dash-top-actions">{isActive && <AddTransactionButton onClick={openAddTransaction} />}<button className="dash-icon-button" type="button" onClick={toggleTheme} aria-label="Ganti tema terang atau gelap"><Icon name="theme" /></button><a className="dash-icon-button dash-profile-button" href="#telegram" aria-label={`Profil ${displayName}, ${isActive ? 'akses aktif' : 'akses perlu diaktifkan'}`}><span className="dash-avatar">{initials}</span></a><button className="dash-mobile-logout dash-icon-button" type="button" onClick={() => void onSignOut()} aria-label="Keluar dari akun"><Icon name="logout" /></button><span className="dash-desktop-action"><TelegramAction /></span></div></header>
       {(page === 'beranda' || page === 'transaksi' || page === 'anggaran' || page === 'laporan') && <div className="dash-period-row"><MonthPicker month={month} onChange={setMonth} /><div className="dash-update"><span className="dash-updated-label" role="status">{data.loading ? 'Memperbarui catatan…' : data.updatedAt ? `Diperbarui ${timeFormat.format(data.updatedAt)} WITA` : 'Belum ada data terbaru'}</span><button type="button" className="dash-button dash-refresh" disabled={data.loading} onClick={data.refresh}><Icon name="refresh" size={16} className={data.loading ? 'dash-spin' : ''} /><span>Perbarui</span></button></div></div>}
       {!isActive && <div className="dash-notice"><Icon name="calendar" /><div><strong>{expiry ? 'Masa aktif Anda telah berakhir.' : 'Aktifkan akun Anda.'}</strong><p>Riwayat tetap dapat dibaca. Masukkan kode lisensi pada bagian akses akun untuk melanjutkan pencatatan.</p><a href="#telegram">Aktivasi akses akun <span aria-hidden="true">→</span></a></div></div>}
       {data.error && <div className="dash-error" role="alert"><strong>{data.error}</strong>{data.hasData && <p>Ringkasan masih menampilkan pembaruan terakhir.</p>}<button type="button" className="dash-text-link" onClick={data.refresh}>Coba lagi</button></div>}
@@ -247,12 +266,12 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
       <div aria-busy={data.loading}>
         {!data.hasData && data.loading ? <div className="dash-skeleton" role="status"><span className="sr-only">Memuat ringkasan dan transaksi Anda.</span><div /><div /><div /></div>
           : data.hasData ? (
-            page === 'transaksi' ? <Transactions transactions={data.transactions} state={data.financialState} month={month} active={isActive} onAddTransaction={() => setTxOpen(true)} />
+            page === 'transaksi' ? <Transactions transactions={data.transactions} state={data.financialState} month={month} active={isActive} onAddTransaction={openAddTransaction} onEditTransaction={openEditTransaction} onRefresh={data.refresh} />
               : page === 'akun' ? <AccountsScreen state={data.financialState} onUpdate={data.updateState} />
                 : page === 'anggaran' ? <BudgetScreen transactions={data.transactions} state={data.financialState} month={month} onUpdate={data.updateState} />
                   : page === 'tabungan' ? <GoalsScreen state={data.financialState} onUpdate={data.updateState} />
                     : page === 'laporan' ? <ReportScreen transactions={data.transactions} state={data.financialState} month={month} />
-                      : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} onAddTransaction={() => setTxOpen(true)} />
+                      : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} onAddTransaction={openAddTransaction} />
           )
             : <section className="dash-card"><EmptyState title="Catatan belum dapat dimuat">Gunakan tombol Coba lagi untuk membaca ulang data Anda.</EmptyState></section>}
       </div>
@@ -260,6 +279,6 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
       <footer className="dash-footer"><span>Finora <span aria-hidden="true">·</span> Catatan hari ini, rencana esok hari.</span><span>Rupiah · WITA</span></footer>
     </main>
     <Navigation mobile />
-    <TransactionFormDialog open={txOpen} onClose={() => setTxOpen(false)} userId={userId} state={data.financialState} onSaved={data.refresh} />
+    <TransactionFormDialog open={txOpen} onClose={() => setTxOpen(false)} userId={userId} state={data.financialState} editing={txEditing} onSaved={data.refresh} />
   </div>
 }

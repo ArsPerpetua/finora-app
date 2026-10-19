@@ -127,6 +127,25 @@ test('anggaran bulanan membandingkan batas dengan pengeluaran nyata per kategori
   assert.equal(budgetStats([], noTotal).total.limit, 60000, 'tanpa batas total, jumlahkan batas per kategori')
 })
 
+test('biaya admin transfer tercatat sebagai pengeluaran kategori "Biaya & Admin"', () => {
+  const withFee = [tx({ id: '5', type: 'transfer', amount: 500000, cat_id: null, to_account_id: 'bank', fee: 6500 })]
+  assert.deepEqual(summarize(withFee), { income: 0, expense: 6500, net: -6500, count: 1, rate: null })
+  assert.equal(totalBalance(withFee, state), 100000 - 6500)
+  const categories = expenseCategories(withFee, state)
+  assert.equal(categories.length, 1)
+  assert.deepEqual({ id: categories[0].id, amount: categories[0].amount }, { id: 'fees', amount: 6500 })
+  const stats = budgetStats(withFee, state)
+  assert.equal(stats.total.spent, 6500)
+  assert.equal(stats.categories.find(item => item.id === 'fees').spent, 6500)
+})
+
+test('filter transaksi berdasarkan akun mencocokkan akun asal maupun akun tujuan transfer', () => {
+  const filter = { month: '2026-10', allMonths: false, type: 'all', category: 'all', account: 'cash', query: '' }
+  assert.deepEqual(filterTransactions(transactions, state, filter).map(item => item.id), ['3', '2', '1'], 'semua tx bulan ini memakai akun cash')
+  assert.deepEqual(filterTransactions(transactions, state, { ...filter, account: 'bank' }).map(item => item.id), ['3'], 'transfer cocok lewat akun tujuan')
+  assert.equal(filterTransactions(transactions, state, { ...filter, account: 'all' }).length, 3)
+})
+
 test('transaksi terbaru diurutkan stabil berdasarkan tanggal dan waktu pencatatan', () => {
   const rows = [tx({ id: 'a', created_at: '2026-10-18T01:00:00Z' }), tx({ id: 'b', created_at: '2026-10-18T03:00:00Z' }), tx({ id: 'c', tx_date: '2026-10-17' })]
   assert.deepEqual(sortTransactions(rows).map(item => item.id), ['b', 'a', 'c'])

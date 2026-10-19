@@ -27,7 +27,7 @@ async function readTransactions(userId: string, signal: AbortSignal): Promise<Tr
   // Cursor UUID menghindari duplikasi halaman saat transaksi Telegram masuk.
   while (!signal.aborted) {
     let query = supabase.from('transactions')
-      .select('id, type, amount, account_id, to_account_id, cat_id, title, note, tx_date, created_at, source')
+      .select('id, type, amount, account_id, to_account_id, cat_id, title, note, tx_date, created_at, source, fee')
       .eq('user_id', userId)
       .order('id', { ascending: true })
       .limit(1000)
