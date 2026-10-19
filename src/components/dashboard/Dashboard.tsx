@@ -4,7 +4,7 @@ import { config } from '../../config'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useTheme } from '../../hooks/useTheme'
 import {
-  budgetStats, cashFlow, categoryFor, expenseCategories, filterTransactions, goalProgress, monthLabel, rupiah,
+  budgetStats, budgetTier, cashFlow, categoryFor, expenseCategories, filterTransactions, goalProgress, monthLabel, rupiah,
   shiftMonth, sortTransactions, summarize, todayMakassar, totalBalance,
   type FinancialState, type Transaction, type TransactionType,
 } from '../../lib/finance'
@@ -93,15 +93,16 @@ function Categories({ transactions, state }: { transactions: Transaction[]; stat
 
 function BudgetProgressCard({ transactions, state, month }: { transactions: Transaction[]; state: FinancialState; month: string }) {
   const selected = transactions.filter(tx => tx.tx_date.startsWith(month + '-'))
-  const stats = budgetStats(selected, state)
+  const previousMonth = transactions.filter(tx => tx.tx_date.startsWith(shiftMonth(month, -1) + '-'))
+  const stats = budgetStats(selected, previousMonth, state)
   const ratio = stats.total.limit > 0 ? Math.min(1, stats.total.spent / stats.total.limit) : 0
-  const over = stats.total.limit > 0 && stats.total.spent > stats.total.limit
+  const tier = stats.total.limit > 0 ? budgetTier(stats.total.spent / stats.total.limit) : 'ok'
   return <section className="dash-card dash-span-6" aria-labelledby="budget-progress-title">
     <div className="dash-card-heading"><h2 id="budget-progress-title">Progres pengeluaran</h2><Link className="dash-text-link" to="/app/anggaran">Atur <Icon name="right" size={15} /></Link></div>
     {stats.total.limit > 0
       ? <>
-        <div className="dash-budget-summary"><strong className={over ? 'dash-negative' : ''}>{rupiah(stats.total.spent)}</strong><span className="dash-muted">dari {rupiah(stats.total.limit)}</span></div>
-        <div className={`dash-progress${over ? ' is-over' : ''}`}><i style={{ width: `${ratio * 100}%` }} /></div>
+        <div className="dash-budget-summary"><strong className={tier === 'bad' ? 'dash-negative' : ''}>{rupiah(stats.total.spent)}</strong><span className="dash-muted">dari {rupiah(stats.total.limit)}</span></div>
+        <div className={`dash-progress${tier !== 'ok' ? ` is-${tier === 'bad' ? 'over' : 'warn'}` : ''}`}><i style={{ width: `${ratio * 100}%` }} /></div>
       </>
       : <EmptyState title="Belum ada anggaran">Tentukan batas pengeluaran bulanan di layar Anggaran.</EmptyState>}
   </section>

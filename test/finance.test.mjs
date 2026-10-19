@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  budgetStats, CATEGORY_ICONS, cashFlow, categoryComparison, categoryFor, contributeToGoal, DEFAULT_CATEGORIES, expenseCategories,
+  budgetStats, budgetTier, CATEGORY_ICONS, cashFlow, categoryComparison, categoryFor, contributeToGoal, DEFAULT_CATEGORIES, expenseCategories,
   expenseCategoryOptions, filterTransactions, goalProgress, isAccountInUse, readFinancialState, removeAccount,
   removeCategory, removeGoal, setBudgetTotal, setCategoryBudget, setDefaultAccount, shiftMonth, sortTransactions,
   summarize, todayMakassar, totalBalance, upsertAccount, upsertCategory, upsertGoal,
@@ -97,7 +97,7 @@ test('akun, kategori, dan tujuan tabungan bisa ditambah, diubah, dan dihapus di 
   s = upsertCategory(s, { id: 'c1', name: 'Olahraga', color: '#111111', type: 'expense' })
   assert.equal(expenseCategoryOptions(s).some(item => item.id === 'c1'), true)
   s = setCategoryBudget(s, 'c1', 200000)
-  assert.equal(s.budget.cats.c1, 200000)
+  assert.deepEqual(s.budget.cats.c1, { limit: 200000, roll: false })
   s = removeCategory(s, 'c1')
   assert.equal(s.cats.length, 0)
   assert.equal(s.budget.cats.c1, undefined)
@@ -116,15 +116,40 @@ test('anggaran bulanan membandingkan batas dengan pengeluaran nyata per kategori
   let s = setBudgetTotal({ accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } }, 100000)
   s = setCategoryBudget(s, 'food', 60000)
   const month = [tx({ id: '1', amount: 25000, cat_id: 'food' }), tx({ id: '2', amount: 50000, cat_id: 'transport' })]
-  const stats = budgetStats(month, s)
+  const stats = budgetStats(month, [], s)
   assert.deepEqual(stats.total, { limit: 100000, spent: 75000 })
   const food = stats.categories.find(item => item.id === 'food')
-  assert.deepEqual({ limit: food.limit, spent: food.spent }, { limit: 60000, spent: 25000 })
+  assert.deepEqual({ limit: food.limit, spent: food.spent, roll: food.roll, carry: food.carry }, { limit: 60000, spent: 25000, roll: false, carry: 0 })
   const transport = stats.categories.find(item => item.id === 'transport')
   assert.deepEqual({ limit: transport.limit, spent: transport.spent }, { limit: 0, spent: 50000 })
 
   const noTotal = setCategoryBudget({ accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } }, 'food', 60000)
-  assert.equal(budgetStats([], noTotal).total.limit, 60000, 'tanpa batas total, jumlahkan batas per kategori')
+  assert.equal(budgetStats([], [], noTotal).total.limit, 60000, 'tanpa batas total, jumlahkan batas per kategori')
+})
+
+test('roll-over anggaran kategori membawa sisa batas bulan lalu ke bulan ini', () => {
+  let s = setCategoryBudget({ accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } }, 'food', 100000, true)
+  const lastMonth = [tx({ id: 'p1', amount: 40000, cat_id: 'food', tx_date: '2026-09-15' })]
+  const thisMonth = [tx({ id: 't1', amount: 30000, cat_id: 'food' })]
+  const stats = budgetStats(thisMonth, lastMonth, s)
+  const food = stats.categories.find(item => item.id === 'food')
+  assert.deepEqual({ limit: food.limit, carry: food.carry, roll: food.roll }, { limit: 160000, carry: 60000, roll: true }, 'sisa 60rb (100rb batas - 40rb terpakai) bulan lalu ditambahkan')
+  assert.equal(stats.total.limit, 160000, 'total tanpa batas eksplisit memakai batas efektif (termasuk carry)')
+
+  const overspent = [tx({ id: 'p2', amount: 150000, cat_id: 'food', tx_date: '2026-09-15' })]
+  const noCarry = budgetStats(thisMonth, overspent, s).categories.find(item => item.id === 'food')
+  assert.equal(noCarry.carry, 0, 'bulan lalu melebihi batas, tidak ada sisa yang dibawa (carry tidak boleh negatif)')
+
+  const sExplicitTotal = setBudgetTotal(s, 500000)
+  assert.equal(budgetStats(thisMonth, lastMonth, sExplicitTotal).total.limit, 500000, 'batas total eksplisit tidak ikut ditambah carry kategori')
+})
+
+test('budgetTier menentukan warna bar anggaran: hijau/kuning/merah', () => {
+  assert.equal(budgetTier(0.5), 'ok')
+  assert.equal(budgetTier(0.8), 'ok')
+  assert.equal(budgetTier(0.81), 'warn')
+  assert.equal(budgetTier(1), 'warn')
+  assert.equal(budgetTier(1.01), 'bad')
 })
 
 test('biaya admin transfer tercatat sebagai pengeluaran kategori "Biaya & Admin"', () => {
@@ -134,7 +159,7 @@ test('biaya admin transfer tercatat sebagai pengeluaran kategori "Biaya & Admin"
   const categories = expenseCategories(withFee, state)
   assert.equal(categories.length, 1)
   assert.deepEqual({ id: categories[0].id, amount: categories[0].amount }, { id: 'fees', amount: 6500 })
-  const stats = budgetStats(withFee, state)
+  const stats = budgetStats(withFee, [], state)
   assert.equal(stats.total.spent, 6500)
   assert.equal(stats.categories.find(item => item.id === 'fees').spent, 6500)
 })

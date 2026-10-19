@@ -110,7 +110,7 @@
 .dash-budget-summary{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:14px}.dash-budget-summary>span:first-child{font-size:10px;color:var(--muted)}.dash-budget-summary strong{font:700 clamp(18px,2vw,23px)/1.4 var(--font-d);letter-spacing:-.02em}
 .dash-progress{height:8px;border-radius:999px;background:var(--dash-soft);overflow:hidden;margin-top:10px}
 .dash-progress>i{display:block;height:100%;border-radius:999px;background:var(--lime-ink)}
-.dash-progress.is-over>i{background:var(--err)}.dash-progress.is-done>i{background:var(--ok)}
+.dash-progress.is-over>i{background:var(--err)}.dash-progress.is-done>i{background:var(--ok)}.dash-progress.is-warn>i{background:var(--warn-bar)}
 .finora-dashboard .app-card{display:grid;gap:12px;padding:20px 0 0;min-width:0}.finora-dashboard .app-card h2{font-size:18px;line-height:1.4}.finora-dashboard .app-card .muted{color:var(--muted);font-size:12px}
 .finora-dashboard .app-card a{font-weight:600}.finora-dashboard .app-card code{font-family:var(--font-m);background:var(--lime-soft);color:var(--lime-ink);padding:3px 7px;border-radius:7px;overflow-wrap:anywhere}
 .finora-dashboard .app-card .field{max-width:420px;margin-top:4px}.finora-dashboard .app-card .err{margin:0;min-height:0}.finora-dashboard .app-card .btn{justify-self:start;font-size:12px;min-height:40px;padding:10px 18px;border-radius:10px}

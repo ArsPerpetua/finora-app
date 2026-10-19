@@ -41,9 +41,15 @@ export const CATEGORY_ICONS = [
   'repeat', 'coffee', 'briefcase', 'trend', 'coin', 'phone', 'tv', 'music', 'cloud', 'dots',
 ]
 
+export interface CategoryBudget {
+  limit: number
+  /** Sisa (batas minus terpakai) bulan lalu ditambahkan ke batas bulan ini, bila dicentang. */
+  roll: boolean
+}
+
 export interface Budget {
   total: number
-  cats: Record<string, number>
+  cats: Record<string, CategoryBudget>
 }
 
 export interface Goal {
@@ -149,11 +155,12 @@ export function readFinancialState(value: unknown): FinancialState {
   }
   const budgetRoot = root.budget && typeof root.budget === 'object' ? root.budget as Record<string, unknown> : {}
   const total = Number(budgetRoot.total ?? 0)
-  const budgetCats: Record<string, number> = {}
+  const budgetCats: Record<string, CategoryBudget> = {}
   if (budgetRoot.cats && typeof budgetRoot.cats === 'object') {
     for (const [key, raw] of Object.entries(budgetRoot.cats as Record<string, unknown>)) {
-      const limit = Number(raw)
-      if (Number.isFinite(limit) && limit > 0) budgetCats[key] = limit
+      // Data lama menyimpan batas sebagai angka polos (sebelum opsi roll-over ada); tetap diterima.
+      const limit = Number(typeof raw === 'object' && raw ? (raw as Record<string, unknown>).limit : raw)
+      if (Number.isFinite(limit) && limit > 0) budgetCats[key] = { limit, roll: typeof raw === 'object' && raw !== null && (raw as Record<string, unknown>).roll === true }
     }
   }
   const defaultAccountId = typeof root.defaultAccountId === 'string' && accounts.some(account => account.id === root.defaultAccountId) ? root.defaultAccountId : null
@@ -250,44 +257,63 @@ export function setBudgetTotal(state: FinancialState, total: number): FinancialS
   return { ...state, budget: { ...state.budget, total: Math.max(0, total) } }
 }
 
-export function setCategoryBudget(state: FinancialState, categoryId: string, limit: number): FinancialState {
+export function setCategoryBudget(state: FinancialState, categoryId: string, limit: number, roll = false): FinancialState {
   const cats = { ...state.budget.cats }
-  if (limit > 0) cats[categoryId] = limit
+  if (limit > 0) cats[categoryId] = { limit, roll }
   else delete cats[categoryId]
   return { ...state, budget: { ...state.budget, cats } }
+}
+
+/** Jumlah pengeluaran (termasuk biaya admin transfer) per kategori, dipakai anggaran dan ringkasan kategori. */
+function categorySpending(transactions: readonly Transaction[], state: FinancialState): Map<string, number> {
+  const spent = new Map<string, number>()
+  for (const tx of transactions) {
+    if (tx.type === 'expense') {
+      const category = categoryFor(tx, state)
+      spent.set(category.id, (spent.get(category.id) ?? 0) + Number(tx.amount))
+    }
+    const fee = transferFee(tx)
+    if (fee > 0) {
+      const category = feesCategory(state)
+      spent.set(category.id, (spent.get(category.id) ?? 0) + fee)
+    }
+  }
+  return spent
+}
+
+/** Ambang warna bar anggaran, mengikuti prototipe: >100% merah, >80% kuning, selain itu hijau. */
+export function budgetTier(ratio: number): 'ok' | 'warn' | 'bad' {
+  return ratio > 1 ? 'bad' : ratio > 0.8 ? 'warn' : 'ok'
 }
 
 export interface BudgetCategoryStat extends Category {
   limit: number
   spent: number
+  roll: boolean
+  carry: number
 }
 
-/** Ringkasan anggaran bulanan sederhana: batas total dan per kategori dibandingkan pengeluaran nyata. */
-export function budgetStats(transactionsForMonth: readonly Transaction[], state: FinancialState) {
-  const spentByCategory = new Map<string, number>()
-  let totalSpent = 0
-  for (const tx of transactionsForMonth) {
-    if (tx.type === 'expense') {
-      const amount = Number(tx.amount)
-      totalSpent += amount
-      const category = categoryFor(tx, state)
-      spentByCategory.set(category.id, (spentByCategory.get(category.id) ?? 0) + amount)
-    }
-    const fee = transferFee(tx)
-    if (fee > 0) {
-      totalSpent += fee
-      const category = feesCategory(state)
-      spentByCategory.set(category.id, (spentByCategory.get(category.id) ?? 0) + fee)
-    }
-  }
+/**
+ * Ringkasan anggaran bulanan: batas total dan per kategori dibandingkan pengeluaran nyata.
+ * `previousMonth` dipakai untuk roll-over: sisa batas kategori bulan lalu (yang ditandai roll) ditambahkan ke batas bulan ini.
+ */
+export function budgetStats(transactionsForMonth: readonly Transaction[], previousMonth: readonly Transaction[], state: FinancialState) {
+  const spentByCategory = categorySpending(transactionsForMonth, state)
+  const previousSpentByCategory = categorySpending(previousMonth, state)
+  const totalSpent = [...spentByCategory.values()].reduce((sum, value) => sum + value, 0)
   const limitedIds = Object.keys(state.budget.cats)
   const categoryIds = new Set([...limitedIds, ...spentByCategory.keys()])
   const categories: BudgetCategoryStat[] = [...categoryIds].map(id => {
     const category = state.cats.find(item => item.id === id) ?? DEFAULT_CATEGORIES.find(item => item.id === id)
       ?? { id, name: id, color: '#8a9484', type: 'expense' as const, icon: 'dots' }
-    return { ...category, limit: state.budget.cats[id] ?? 0, spent: spentByCategory.get(id) ?? 0 }
+    const budget = state.budget.cats[id]
+    const base = budget?.limit ?? 0
+    const carry = budget?.roll ? Math.max(0, base - (previousSpentByCategory.get(id) ?? 0)) : 0
+    return { ...category, limit: base + carry, spent: spentByCategory.get(id) ?? 0, roll: budget?.roll ?? false, carry }
   }).sort((a, b) => b.spent - a.spent || b.limit - a.limit)
-  const totalLimit = state.budget.total > 0 ? state.budget.total : limitedIds.reduce((sum, id) => sum + state.budget.cats[id], 0)
+  const totalLimit = state.budget.total > 0
+    ? state.budget.total
+    : categories.filter(item => limitedIds.includes(item.id)).reduce((sum, item) => sum + item.limit, 0)
   return { total: { limit: totalLimit, spent: totalSpent }, categories }
 }
 
