@@ -101,7 +101,7 @@ export function AccountDialog({ code, onClose }: { code: string | null; onClose:
                 <input id="acc-email" name="email" type="email" autoComplete="email" inputMode="email" required />
               </div>
               <PasswordField id="acc-pass" label="Kata sandi" autoComplete="new-password" hint="Minimal 8 karakter." />
-              <p className="err" role="alert">{err}</p>
+              {err && <p className="err" role="alert">{err}</p>}
               <button className="btn btn-ink btn-block" type="submit" disabled={busy}>
                 {busy ? 'Membuat akun…' : 'Buat akun'}
               </button>
@@ -214,7 +214,7 @@ export function LoginDialog({ open, onClose, onNeedCode }: { open: boolean; onCl
                 <input id="log-email" name="email" type="email" autoComplete="username" inputMode="email" required />
               </div>
               <PasswordField id="log-pass" label="Kata sandi" autoComplete="current-password" />
-              <p className="err" role="alert">{err}</p>
+              {err && <p className="err" role="alert">{err}</p>}
               <button className="btn btn-ink btn-block" type="submit" disabled={busy}>
                 {busy ? 'Memeriksa…' : 'Login'}
               </button>
@@ -238,7 +238,7 @@ export function LoginDialog({ open, onClose, onNeedCode }: { open: boolean; onCl
                 <label htmlFor="log-forgot-email">Email</label>
                 <input id="log-forgot-email" name="email" type="email" autoComplete="username" inputMode="email" required />
               </div>
-              <p className="err" role="alert">{err}</p>
+              {err && <p className="err" role="alert">{err}</p>}
               <button className="btn btn-ink btn-block" type="submit" disabled={busy}>
                 {busy ? 'Mengirim…' : 'Kirim tautan atur ulang'}
               </button>
