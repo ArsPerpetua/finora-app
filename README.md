@@ -32,7 +32,7 @@ untuk memasang ulang dependensi dari lockfile. Jangan menyalin `node_modules`
 dari komputer atau OS lain. Lihat juga [laporan npm tentang dependensi optional](https://github.com/npm/cli/issues/4828).
 
 ## Siapkan Supabase (sekali)
-1. SQL Editor: jalankan `supabase/schema.sql`, lalu `supabase/002_check_code.sql`.
+1. SQL Editor: jalankan `supabase/schema.sql`, lalu `supabase/002_check_code.sql`, lalu `supabase/003_transactions_full.sql`.
 2. Authentication → Providers → Email: untuk uji coba matikan "Confirm email".
 3. Buat kode lisensi: `npm run codes -- 20 30`, lalu tempel `scripts/out/insert-30d.sql` ke SQL Editor.
 

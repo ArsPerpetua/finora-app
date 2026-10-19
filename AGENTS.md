@@ -27,7 +27,7 @@ src/components/     komponen UI; landing/ = halaman login, dashboard/ = layar /a
 src/lib/            supabase.ts, auth.tsx (AuthProvider), licenseCode.ts, finance.ts (model data + hitung)
 src/hooks/          useDashboardData.ts (baca transaksi + user_state, updateState untuk simpan)
 netlify/functions/  telegram.mjs (webhook), lib/parser.mjs (parser regex)
-supabase/           schema.sql lalu 002_check_code.sql (jalankan berurutan di SQL Editor)
+supabase/           schema.sql, 002_check_code.sql, 003_transactions_full.sql (jalankan berurutan di SQL Editor)
 ```
 
 ## Aturan

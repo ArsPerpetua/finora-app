@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { readFinancialState, type FinancialState, type Transaction } from '../lib/finance'
 import { supabase } from '../lib/supabase'
 
@@ -10,13 +10,14 @@ interface DashboardData {
   hasData: boolean
   error: string
   updatedAt: Date | null
+  conflict: boolean
 }
 
 const emptyFinancialState: FinancialState = { accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } }
 
 const empty = (ownerId: string): DashboardData => ({
   ownerId, transactions: [], financialState: emptyFinancialState,
-  loading: true, hasData: false, error: '', updatedAt: null,
+  loading: true, hasData: false, error: '', updatedAt: null, conflict: false,
 })
 
 async function readTransactions(userId: string, signal: AbortSignal): Promise<Transaction[]> {
@@ -48,6 +49,10 @@ export function useDashboardData(userId: string) {
   const [revision, setRevision] = useState(0)
   const [data, setData] = useState<DashboardData>(() => empty(userId))
   const refresh = useCallback(() => setRevision(value => value + 1), [])
+  // Versi `user_state.updated_at` yang terakhir kita baca, untuk deteksi konflik
+  // optimistik saat menyimpan (lihat updateState di bawah). Ref, bukan state,
+  // supaya updateState selalu baca nilai terbaru tanpa jadi dependency useCallback.
+  const stateVersionRef = useRef<string | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -58,13 +63,16 @@ export function useDashboardData(userId: string) {
       try {
         const [transactions, state] = await Promise.all([
           readTransactions(userId, controller.signal),
-          supabase.from('user_state').select('data').eq('user_id', userId).abortSignal(controller.signal).maybeSingle(),
+          supabase.from('user_state').select('data, updated_at').eq('user_id', userId).abortSignal(controller.signal).maybeSingle(),
         ])
         if (state.error) throw state.error
-        if (!disposed && !controller.signal.aborted) setData({
-          ownerId: userId, transactions, financialState: readFinancialState(state.data?.data),
-          loading: false, hasData: true, error: '', updatedAt: new Date(),
-        })
+        if (!disposed && !controller.signal.aborted) {
+          stateVersionRef.current = state.data?.updated_at ?? null
+          setData({
+            ownerId: userId, transactions, financialState: readFinancialState(state.data?.data),
+            loading: false, hasData: true, error: '', updatedAt: new Date(), conflict: false,
+          })
+        }
       } catch {
         if (!disposed) setData(previous => ({
           ...(previous.ownerId === userId ? previous : empty(userId)), loading: false,
@@ -88,6 +96,15 @@ export function useDashboardData(userId: string) {
     }
   }, [refresh])
 
+  // Realtime: catatan baru/ubahan dari Telegram (atau tab lain) langsung tampil tanpa refresh manual.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`transactions-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${userId}` }, () => refresh())
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [userId, refresh])
+
   const updateState = useCallback(async (updater: (state: FinancialState) => FinancialState) => {
     let previous: FinancialState | null = null
     let next: FinancialState | null = null
@@ -98,12 +115,33 @@ export function useDashboardData(userId: string) {
       return { ...current, financialState: next }
     })
     if (!next) return
-    const { error } = await supabase.from('user_state').update({ data: next, updated_at: new Date().toISOString() }).eq('user_id', userId)
+    const nowIso = new Date().toISOString()
+    const expectedVersion = stateVersionRef.current
+    let query = supabase.from('user_state').update({ data: next, updated_at: nowIso }).eq('user_id', userId)
+    if (expectedVersion) query = query.eq('updated_at', expectedVersion)
+    const { data: rows, error } = await query.select('updated_at')
     if (error) {
       setData(current => current.ownerId === userId && previous ? { ...current, financialState: previous } : current)
       throw error
     }
+    if (rows?.length) {
+      stateVersionRef.current = rows[0].updated_at
+      return
+    }
+    // `expectedVersion` tidak cocok lagi: baris berubah di server sejak terakhir dibaca
+    // (mis. disimpan dari tab/perangkat lain). Simpan tetap (last-write-wins), tapi beri tahu.
+    const retry = await supabase.from('user_state').update({ data: next, updated_at: nowIso }).eq('user_id', userId).select('updated_at')
+    if (retry.error) {
+      setData(current => current.ownerId === userId && previous ? { ...current, financialState: previous } : current)
+      throw retry.error
+    }
+    stateVersionRef.current = retry.data?.[0]?.updated_at ?? nowIso
+    setData(current => current.ownerId === userId ? { ...current, conflict: true } : current)
   }, [userId])
 
-  return { ...(data.ownerId === userId ? data : empty(userId)), refresh, updateState }
+  const dismissConflict = useCallback(() => {
+    setData(current => current.ownerId === userId ? { ...current, conflict: false } : current)
+  }, [userId])
+
+  return { ...(data.ownerId === userId ? data : empty(userId)), refresh, updateState, dismissConflict }
 }
