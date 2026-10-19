@@ -17,14 +17,15 @@ Dokumen acuan: `docs/PRD-Finora-MVP.md` (lingkup MVP), `docs/reference/prototype
 ## Perintah
 - `npm run dev` — jalankan lokal (butuh `.env`, lihat `.env.example`)
 - `npm run build` — typecheck + build produksi
-- `npm test` — uji parser pesan bot
+- `npm test` — uji parser pesan bot dan fungsi hitung dashboard (`src/lib/finance.ts`)
 - `npm run codes -- 100 30` — buat 100 kode lisensi 30 hari (hasil di `scripts/out/`, jangan di-commit)
 
 ## Struktur
 ```
-src/pages/          Landing (login/aktivasi), AppHome (sementara), halaman dashboard nanti
-src/components/     komponen UI; landing/ = bagian halaman login
-src/lib/            supabase.ts, auth.tsx (AuthProvider), licenseCode.ts
+src/pages/          Landing (login/aktivasi), AppHome (guard sesi + aktif, merender Dashboard)
+src/components/     komponen UI; landing/ = halaman login, dashboard/ = layar /app
+src/lib/            supabase.ts, auth.tsx (AuthProvider), licenseCode.ts, finance.ts (model data + hitung)
+src/hooks/          useDashboardData.ts (baca transaksi + user_state, updateState untuk simpan)
 netlify/functions/  telegram.mjs (webhook), lib/parser.mjs (parser regex)
 supabase/           schema.sql lalu 002_check_code.sql (jalankan berurutan di SQL Editor)
 ```
@@ -40,7 +41,4 @@ supabase/           schema.sql lalu 002_check_code.sql (jalankan berurutan di SQ
 8. Jangan commit `.env`, `scripts/out/`, atau kunci apa pun.
 
 ## Status
-Selesai: skema Supabase, bot Telegram (catat, /saldo, /laporan, /hapus, /start), halaman login/aktivasi tersambung Supabase, layar /app sementara (aktivasi ulang + tautan Telegram), dashboard Beranda + daftar Transaksi, layar Akun/Dompet, Kategori, Anggaran, Tabungan (CRUD di `user_state.data`, lewat `useDashboardData().updateState`), layar Laporan bulanan, dan form catat transaksi lewat web (modal, insert langsung ke tabel `transactions`, tunduk pada RLS `is_active()`).
-
-Berikutnya: uji keamanan RLS.
-Ditunda dari MVP: multi-mata uang, split kategori, struk, aset/utang, kalender tagihan, transaksi berulang, impor/ekspor, parser AI, WhatsApp.
+Backlog lengkap dan progres detail: `docs/BACKLOG.md` (satu-satunya sumber kebenaran untuk status — perbarui di sana, bukan di sini). Kerjakan Fase A dari A1; bagian "0. Sudah selesai" di file itu mencatat apa yang sudah ada termasuk celahnya dibanding spesifikasi tiap item.
