@@ -4,7 +4,7 @@ import { config } from '../../config'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useTheme } from '../../hooks/useTheme'
 import {
-  cashFlow, categoryFor, expenseCategories, filterTransactions, monthLabel, rupiah,
+  budgetStats, cashFlow, categoryFor, expenseCategories, filterTransactions, goalProgress, monthLabel, rupiah,
   shiftMonth, sortTransactions, summarize, todayMakassar, totalBalance,
   type FinancialState, type Transaction, type TransactionType,
 } from '../../lib/finance'
@@ -12,7 +12,7 @@ import { AccountsScreen } from './Accounts'
 import { BudgetScreen } from './Budget'
 import { CashFlowChart } from './CashFlowChart'
 import { GoalsScreen } from './Goals'
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
 import { ReportScreen } from './Report'
 import { TransactionFormDialog } from './TransactionForm'
 import { TransactionList } from './TransactionList'
@@ -90,6 +90,54 @@ function Categories({ transactions, state }: { transactions: Transaction[]; stat
   </section>
 }
 
+function BudgetProgressCard({ transactions, state, month }: { transactions: Transaction[]; state: FinancialState; month: string }) {
+  const selected = transactions.filter(tx => tx.tx_date.startsWith(month + '-'))
+  const stats = budgetStats(selected, state)
+  const ratio = stats.total.limit > 0 ? Math.min(1, stats.total.spent / stats.total.limit) : 0
+  const over = stats.total.limit > 0 && stats.total.spent > stats.total.limit
+  return <section className="dash-card dash-span-6" aria-labelledby="budget-progress-title">
+    <div className="dash-card-heading"><h2 id="budget-progress-title">Progres pengeluaran</h2><Link className="dash-text-link" to="/app/anggaran">Atur <Icon name="right" size={15} /></Link></div>
+    {stats.total.limit > 0
+      ? <>
+        <div className="dash-budget-summary"><strong className={over ? 'dash-negative' : ''}>{rupiah(stats.total.spent)}</strong><span className="dash-muted">dari {rupiah(stats.total.limit)}</span></div>
+        <div className={`dash-progress${over ? ' is-over' : ''}`}><i style={{ width: `${ratio * 100}%` }} /></div>
+      </>
+      : <EmptyState title="Belum ada anggaran">Tentukan batas pengeluaran bulanan di layar Anggaran.</EmptyState>}
+  </section>
+}
+
+function SavingsCard({ state }: { state: FinancialState }) {
+  return <section className="dash-card dash-span-6" aria-labelledby="savings-title">
+    <div className="dash-card-heading"><h2 id="savings-title">Tabungan</h2><Link className="dash-text-link" to="/app/tabungan">Lihat semua <Icon name="right" size={15} /></Link></div>
+    {state.goals.length
+      ? <ul className="dash-list">{state.goals.slice(0, 3).map(goal => {
+        const progress = goalProgress(goal)
+        return <li key={goal.id} className="dash-row dash-row-stacked">
+          <div className="dash-row" style={{ border: 0, padding: 0 }}><div className="dash-row-main"><strong>{goal.name}</strong><span>{rupiah(goal.saved)} dari {rupiah(goal.target)}</span></div><strong>{Math.round(progress.ratio * 100)}%</strong></div>
+          <div className={`dash-progress${progress.done ? ' is-done' : ''}`}><i style={{ width: `${progress.ratio * 100}%` }} /></div>
+        </li>
+      })}</ul>
+      : <EmptyState title="Belum ada tujuan">Buat tujuan tabungan pertama Anda di layar Tabungan.</EmptyState>}
+  </section>
+}
+
+const MAIN_MENU: Array<{ to: string; icon: IconName; label: string }> = [
+  { to: '/app/transaksi', icon: 'list', label: 'Transaksi' },
+  { to: '/app/akun', icon: 'wallet', label: 'Akun' },
+  { to: '/app/anggaran', icon: 'chart', label: 'Anggaran' },
+  { to: '/app/tabungan', icon: 'target', label: 'Tabungan' },
+  { to: '/app/laporan', icon: 'trend', label: 'Laporan' },
+]
+
+function MainMenu() {
+  return <section className="dash-card dash-span-12" aria-labelledby="menu-title">
+    <div className="dash-card-heading"><h2 id="menu-title">Menu utama</h2></div>
+    <nav className="dash-menu" aria-label="Menu utama">
+      {MAIN_MENU.map(item => <Link key={item.to} to={item.to} className="dash-menu-item"><span className="dash-menu-icon"><Icon name={item.icon} size={22} /></span><span>{item.label}</span></Link>)}
+    </nav>
+  </section>
+}
+
 function Overview({ transactions, state, month, linked, active, onAddTransaction }: { transactions: Transaction[]; state: FinancialState; month: string; linked: boolean; active: boolean; onAddTransaction: () => void }) {
   const [hideBalance, setHideBalance] = useState(false)
   const selected = useMemo(() => sortTransactions(transactions.filter(tx => tx.tx_date.startsWith(month + '-'))), [transactions, month])
@@ -127,6 +175,10 @@ function Overview({ transactions, state, month, linked, active, onAddTransaction
       {flow.some(point => point.income || point.expense) ? <CashFlowChart flow={flow} /> : <EmptyState title="Grafik Anda dimulai di sini">Pemasukan dan pengeluaran dari enam bulan terakhir akan membentuk arus kas Anda.</EmptyState>}
     </section>
     <Categories transactions={selected} state={state} />
+
+    <BudgetProgressCard transactions={transactions} state={state} month={month} />
+    <SavingsCard state={state} />
+    <MainMenu />
 
     <section className="dash-card dash-span-12" aria-labelledby="recent-title"><div className="dash-card-heading"><div><h2 id="recent-title">Transaksi terbaru</h2><p className="dash-muted">Catatan pada {monthLabel(month)}</p></div><Link className="dash-text-link" to="/app/transaksi">Lihat semua <Icon name="right" size={15} /></Link></div>
       {selected.length ? <TransactionList transactions={selected.slice(0, 6)} state={state} /> : <><EmptyState title="Belum ada transaksi bulan ini">Mulai dengan mencatat pemasukan atau pengeluaran lewat web atau Telegram.</EmptyState><div className="dash-empty-action">{active && <AddTransactionButton onClick={onAddTransaction} />}<TelegramAction /></div></>}
