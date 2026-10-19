@@ -12,6 +12,32 @@ export function isValidCodeFormat(code: string): boolean {
 
 export type CodeStatus = 'ok' | 'used' | 'revoked' | 'not_found'
 
+const PENDING_CODE_KEY = 'finora.pendingCode'
+
+/**
+ * Simpan kode yang sudah divalidasi tapi belum sempat diaktifkan (mis. menunggu konfirmasi
+ * email). AuthProvider akan mencoba mengaktifkannya begitu sesi login tersedia, supaya
+ * pengguna tidak perlu memasukkan kode yang sama dua kali.
+ */
+export function savePendingCode(code: string): void {
+  try {
+    localStorage.setItem(PENDING_CODE_KEY, code)
+  } catch {
+    /* penyimpanan diblokir: aktivasi otomatis dilewati, pengguna bisa memasukkan kode lagi di dashboard */
+  }
+}
+
+/** Ambil dan hapus kode tertunda sekali pakai (percobaan aktivasi hanya dilakukan sekali). */
+export function takePendingCode(): string | null {
+  try {
+    const value = localStorage.getItem(PENDING_CODE_KEY)
+    if (value) localStorage.removeItem(PENDING_CODE_KEY)
+    return value
+  } catch {
+    return null
+  }
+}
+
 export const MESSAGES = {
   invalid_format: 'Format kode tidak sesuai. Contoh: FNRA-XXXX-XXXX-XXXX',
   not_found: 'Kode tidak ditemukan. Periksa kembali atau hubungi kami.',
@@ -22,7 +48,6 @@ export const MESSAGES = {
   not_configured: 'Aplikasi belum tersambung ke server. Isi file .env terlebih dahulu.',
   email_taken: 'Email ini sudah terdaftar. Silakan tekan Login.',
   bad_credentials: 'Email atau kata sandi salah.',
-  activation_failed: 'Akun sudah dibuat, tetapi kode belum bisa diaktifkan. Login lalu masukkan kode lagi di dalam aplikasi.',
 } as const
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/

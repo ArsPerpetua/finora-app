@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CloseButton, Modal } from '../Modal'
-import { EMAIL_RE, MESSAGES } from '../../lib/licenseCode'
+import { EMAIL_RE, MESSAGES, savePendingCode } from '../../lib/licenseCode'
 import { isSupabaseConfigured, supabase } from '../../lib/supabase'
 
 function PasswordField({ id, label, autoComplete, hint }: { id: string; label: string; autoComplete: string; hint?: string }) {
@@ -33,13 +33,13 @@ export function AccountDialog({ code, onClose }: { code: string | null; onClose:
   const [step, setStep] = useState<AccountStep>('form')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  const [warn, setWarn] = useState('')
+  const [activationFailed, setActivationFailed] = useState(false)
 
   function close() {
     onClose()
     setStep('form')
     setErr('')
-    setWarn('')
+    setActivationFailed(false)
   }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -64,15 +64,18 @@ export function AccountDialog({ code, onClose }: { code: string | null; onClose:
       setErr(/registered|already/i.test(error.message) ? MESSAGES.email_taken : MESSAGES.server)
       return
     }
-    // Jika "Confirm email" di Supabase menyala, belum ada sesi: pengguna harus konfirmasi dulu.
+    // Jika "Confirm email" di Supabase menyala, belum ada sesi untuk mengaktifkan kode
+    // sekarang. Simpan dulu: AuthProvider akan mengaktifkannya otomatis begitu pengguna
+    // login setelah konfirmasi, supaya kode yang sama tidak perlu dimasukkan dua kali.
     if (!data.session) {
+      savePendingCode(code)
       setBusy(false)
       setStep('confirm-email')
       return
     }
     const { error: actErr } = await supabase.rpc('activate_code', { p_code: code })
     setBusy(false)
-    if (actErr) setWarn(MESSAGES.activation_failed)
+    setActivationFailed(Boolean(actErr))
     setStep('done')
   }
 
@@ -113,9 +116,11 @@ export function AccountDialog({ code, onClose }: { code: string | null; onClose:
                 <path d="M5 12.5l4.5 4.5L19 7.5" />
               </svg>
             </div>
-            <h2 id="acc-title">{warn ? 'Akun Anda sudah jadi.' : 'Akun Anda aktif.'}</h2>
+            <h2 id="acc-title">{activationFailed ? 'Akun Anda sudah jadi.' : 'Akun Anda aktif.'}</h2>
             <p className="lead">
-              {warn || 'Kode lisensi sudah dipakai dan tidak berlaku lagi. Mulai sekarang, masuk cukup dengan tombol Login.'}
+              {activationFailed
+                ? 'Akun berhasil dibuat, tetapi kode belum bisa diaktifkan. Masukkan kode lisensi Anda sekali lagi di dalam aplikasi.'
+                : 'Kode lisensi sudah dipakai dan tidak berlaku lagi. Mulai sekarang, masuk cukup dengan tombol Login.'}
             </p>
             <button className="btn btn-ink btn-block" style={{ marginTop: 20 }} type="button" onClick={() => { close(); navigate('/app') }}>
               Masuk ke Finora
@@ -127,7 +132,7 @@ export function AccountDialog({ code, onClose }: { code: string | null; onClose:
           <div className="done">
             <h2 id="acc-title">Cek email Anda.</h2>
             <p className="lead">
-              Kami mengirim tautan konfirmasi. Setelah dikonfirmasi, login lalu masukkan kode lisensi Anda di dalam aplikasi untuk mengaktifkan akun.
+              Kami mengirim tautan konfirmasi. Setelah dikonfirmasi dan Anda login, kode lisensi Anda akan aktif secara otomatis — tidak perlu memasukkannya lagi.
             </p>
             <button className="btn btn-ink btn-block" style={{ marginTop: 20 }} type="button" onClick={close}>Mengerti</button>
           </div>

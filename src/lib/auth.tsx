@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { takePendingCode } from './licenseCode'
 import { supabase } from './supabase'
 
 export interface Profile {
@@ -30,12 +31,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       return
     }
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, name, telegram_chat_id, active_until')
-      .eq('id', userId)
-      .maybeSingle()
-    setProfile((data as Profile | null) ?? null)
+    const fetchProfile = () => supabase.from('profiles').select('id, name, telegram_chat_id, active_until').eq('id', userId).maybeSingle()
+    let { data } = await fetchProfile()
+    let current = (data as Profile | null) ?? null
+    const isActiveNow = Boolean(current?.active_until && new Date(current.active_until) > new Date())
+    // Kode yang tervalidasi sebelum konfirmasi email tersimpan sementara di localStorage
+    // (lihat savePendingCode di AccountDialog) karena belum ada sesi untuk mengaktifkannya.
+    // Begitu sesi ini siap dan akun belum aktif, coba aktifkan sekali agar pengguna tidak
+    // perlu memasukkan kode yang sama dua kali.
+    const pendingCode = current && !isActiveNow ? takePendingCode() : null
+    if (pendingCode) {
+      const { error } = await supabase.rpc('activate_code', { p_code: pendingCode })
+      if (!error) {
+        data = (await fetchProfile()).data
+        current = (data as Profile | null) ?? current
+      }
+    }
+    setProfile(current)
   }, [])
 
   useEffect(() => {
