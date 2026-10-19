@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  budgetStats, cashFlow, categoryFor, contributeToGoal, expenseCategories, expenseCategoryOptions,
-  filterTransactions, goalProgress, readFinancialState, removeAccount, removeCategory, removeGoal,
-  setBudgetTotal, setCategoryBudget, shiftMonth, sortTransactions, summarize, todayMakassar,
-  totalBalance, upsertAccount, upsertCategory, upsertGoal,
+  budgetStats, cashFlow, categoryComparison, categoryFor, contributeToGoal, expenseCategories,
+  expenseCategoryOptions, filterTransactions, goalProgress, readFinancialState, removeAccount,
+  removeCategory, removeGoal, setBudgetTotal, setCategoryBudget, shiftMonth, sortTransactions,
+  summarize, todayMakassar, totalBalance, upsertAccount, upsertCategory, upsertGoal,
 } from '../src/lib/finance.ts'
 
 const state = readFinancialState({
@@ -24,7 +24,8 @@ const transactions = [
 ]
 
 test('saldo menghitung riwayat penuh dan saldo awal; transfer tidak menggandakan uang', () => {
-  assert.deepEqual(summarize(transactions), { income: 5000000, expense: 75000, net: 4925000, count: 4 })
+  assert.deepEqual(summarize(transactions), { income: 5000000, expense: 75000, net: 4925000, count: 4, rate: 0.985 })
+  assert.equal(summarize([tx({ type: 'expense' })]).rate, null, 'tanpa pemasukan, savings rate tidak terdefinisi')
   assert.equal(totalBalance(transactions, state), 5025000)
   assert.equal(totalBalance([], { accounts: [], cats: [] }), 0)
   assert.equal(totalBalance([tx({ amount: 150000 })], state), -50000)
@@ -59,6 +60,21 @@ test('arus kas enam bulan dan pengeluaran kategori mengecualikan transfer', () =
   assert.equal(categories[0].id, 'transport')
   assert.equal(categories[1].name, 'Makan di luar')
   assert.equal(categories.reduce((sum, item) => sum + item.amount, 0), 75000)
+})
+
+test('laporan bulanan membandingkan kategori pengeluaran dengan bulan sebelumnya', () => {
+  const thisMonth = [tx({ id: '1', amount: 30000, cat_id: 'food' }), tx({ id: '2', amount: 20000, cat_id: 'transport' })]
+  const lastMonth = [tx({ id: '3', amount: 50000, cat_id: 'food', tx_date: '2026-09-18' }), tx({ id: '4', amount: 10000, cat_id: 'shopping', tx_date: '2026-09-18' })]
+  const result = categoryComparison(thisMonth, lastMonth, state)
+  assert.equal(result.length, 2)
+  const food = result.find(item => item.id === 'food')
+  assert.equal(food.amount, 30000)
+  assert.equal(food.previousAmount, 50000)
+  assert.equal(food.changePercent, -40, 'turun 40% dari 50rb ke 30rb')
+  assert.equal(food.share, 0.6, '30rb dari total 50rb pengeluaran bulan ini')
+  const transport = result.find(item => item.id === 'transport')
+  assert.equal(transport.previousAmount, 0)
+  assert.equal(transport.changePercent, null, 'kategori baru tidak punya persentase perubahan')
 })
 
 test('kategori bawaan bot dan metadata kosong ditangani tanpa data contoh', () => {

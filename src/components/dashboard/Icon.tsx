@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type IconName = 'home' | 'list' | 'wallet' | 'income' | 'expense' | 'transfer' | 'left' | 'right' | 'refresh' | 'search' | 'telegram' | 'theme' | 'logout' | 'eye' | 'eyeoff' | 'check' | 'calendar' | 'food' | 'tag' | 'chart' | 'target' | 'plus' | 'edit' | 'trash' | 'close'
+export type IconName = 'home' | 'list' | 'wallet' | 'income' | 'expense' | 'transfer' | 'left' | 'right' | 'refresh' | 'search' | 'telegram' | 'theme' | 'logout' | 'eye' | 'eyeoff' | 'check' | 'calendar' | 'food' | 'tag' | 'chart' | 'target' | 'plus' | 'edit' | 'trash' | 'close' | 'trend'
 
 const paths: Record<IconName, ReactNode> = {
   home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /><path d="M9 21v-8h6v8" /></>,
@@ -28,6 +28,7 @@ const paths: Record<IconName, ReactNode> = {
   edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z" /></>,
   trash: <><path d="M4 7h16M10 11v6M14 11v6" /><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" /></>,
   close: <path d="M5 5l14 14M19 5 5 19" />,
+  trend: <><path d="m3 17 6-6 4 4 8-8" /><path d="M15 7h6v6" /></>,
 }
 
 export function Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {

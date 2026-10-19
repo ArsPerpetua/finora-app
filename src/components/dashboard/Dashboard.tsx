@@ -13,6 +13,7 @@ import { BudgetScreen } from './Budget'
 import { CashFlowChart } from './CashFlowChart'
 import { GoalsScreen } from './Goals'
 import { Icon } from './Icon'
+import { ReportScreen } from './Report'
 import { TransactionList } from './TransactionList'
 
 interface Props {
@@ -36,6 +37,7 @@ function Navigation({ mobile = false }: { mobile?: boolean }) {
     <NavLink to="/app/akun"><Icon name="wallet" /><span>Akun</span></NavLink>
     <NavLink to="/app/anggaran"><Icon name="chart" /><span>Anggaran</span></NavLink>
     <NavLink to="/app/tabungan"><Icon name="target" /><span>Tabungan</span></NavLink>
+    <NavLink to="/app/laporan"><Icon name="trend" /><span>Laporan</span></NavLink>
     {mobile && botUrl && <a href={botUrl} target="_blank" rel="noopener noreferrer"><Icon name="telegram" /><span>Catat</span></a>}
   </nav>
 }
@@ -154,6 +156,7 @@ const PAGES = {
   akun: { match: /^\/app\/akun\/?$/, title: 'Akun & Dompet', greeting: 'Kelola akun dan kategori Anda.' },
   anggaran: { match: /^\/app\/anggaran\/?$/, title: 'Anggaran', greeting: 'Pantau rencana pengeluaran bulanan Anda.' },
   tabungan: { match: /^\/app\/tabungan\/?$/, title: 'Tabungan', greeting: 'Rencanakan dan kejar tujuan Anda.' },
+  laporan: { match: /^\/app\/laporan\/?$/, title: 'Laporan', greeting: 'Tinjau performa keuangan bulanan Anda.' },
 } as const
 
 type PageKey = keyof typeof PAGES
@@ -175,7 +178,7 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
     </aside>
     <main className="dash-main" id="dashboard-content" tabIndex={-1}>
       <header className="dash-topbar"><div><p className="dash-eyebrow">RUANG KEUANGAN ANDA</p><h1>{PAGES[page].title}</h1><p className="dash-greeting">Halo, {displayName}. {PAGES[page].greeting}</p></div><div className="dash-top-actions"><button className="dash-icon-button" type="button" onClick={toggleTheme} aria-label="Ganti tema terang atau gelap"><Icon name="theme" /></button><button className="dash-mobile-logout dash-icon-button" type="button" onClick={() => void onSignOut()} aria-label="Keluar dari akun"><Icon name="logout" /></button><span className="dash-desktop-action"><TelegramAction /></span></div></header>
-      {(page === 'beranda' || page === 'transaksi' || page === 'anggaran') && <div className="dash-period-row"><MonthPicker month={month} onChange={setMonth} /><div className="dash-update"><span className="dash-updated-label" role="status">{data.loading ? 'Memperbarui catatan…' : data.updatedAt ? `Diperbarui ${timeFormat.format(data.updatedAt)} WITA` : 'Belum ada data terbaru'}</span><button type="button" className="dash-button dash-refresh" disabled={data.loading} onClick={data.refresh}><Icon name="refresh" size={16} className={data.loading ? 'dash-spin' : ''} /><span>Perbarui</span></button></div></div>}
+      {(page === 'beranda' || page === 'transaksi' || page === 'anggaran' || page === 'laporan') && <div className="dash-period-row"><MonthPicker month={month} onChange={setMonth} /><div className="dash-update"><span className="dash-updated-label" role="status">{data.loading ? 'Memperbarui catatan…' : data.updatedAt ? `Diperbarui ${timeFormat.format(data.updatedAt)} WITA` : 'Belum ada data terbaru'}</span><button type="button" className="dash-button dash-refresh" disabled={data.loading} onClick={data.refresh}><Icon name="refresh" size={16} className={data.loading ? 'dash-spin' : ''} /><span>Perbarui</span></button></div></div>}
       {!isActive && <div className="dash-notice"><Icon name="calendar" /><div><strong>{expiry ? 'Masa aktif Anda telah berakhir.' : 'Aktifkan akun Anda.'}</strong><p>Riwayat tetap dapat dibaca. Masukkan kode lisensi pada bagian akses akun untuk melanjutkan pencatatan.</p><a href="#telegram">Aktivasi akses akun <span aria-hidden="true">→</span></a></div></div>}
       {data.error && <div className="dash-error" role="alert"><strong>{data.error}</strong>{data.hasData && <p>Ringkasan masih menampilkan pembaruan terakhir.</p>}<button type="button" className="dash-text-link" onClick={data.refresh}>Coba lagi</button></div>}
       <div aria-busy={data.loading}>
@@ -185,7 +188,8 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
               : page === 'akun' ? <AccountsScreen state={data.financialState} onUpdate={data.updateState} />
                 : page === 'anggaran' ? <BudgetScreen transactions={data.transactions} state={data.financialState} month={month} onUpdate={data.updateState} />
                   : page === 'tabungan' ? <GoalsScreen state={data.financialState} onUpdate={data.updateState} />
-                    : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} />
+                    : page === 'laporan' ? <ReportScreen transactions={data.transactions} state={data.financialState} month={month} />
+                      : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} />
           )
             : <section className="dash-card"><EmptyState title="Catatan belum dapat dimuat">Gunakan tombol Coba lagi untuk membaca ulang data Anda.</EmptyState></section>}
       </div>

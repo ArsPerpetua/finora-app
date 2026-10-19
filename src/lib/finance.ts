@@ -250,7 +250,8 @@ export function summarize(transactions: readonly Transaction[]) {
     if (tx.type === 'income') income += amount
     if (tx.type === 'expense') expense += amount
   }
-  return { income, expense, net: income - expense, count: transactions.length }
+  const net = income - expense
+  return { income, expense, net, count: transactions.length, rate: income > 0 ? net / income : null }
 }
 
 export function totalBalance(transactions: readonly Transaction[], state: FinancialState): number {
@@ -297,4 +298,27 @@ export function expenseCategories(transactions: readonly Transaction[], state: F
     totals.set(category.id, { ...category, amount: (prior?.amount ?? 0) + Number(tx.amount) })
   }
   return [...totals.values()].sort((a, b) => b.amount - a.amount)
+}
+
+export interface CategoryComparison extends Category {
+  amount: number
+  previousAmount: number
+  share: number
+  changePercent: number | null
+}
+
+/** Pengeluaran per kategori bulan terpilih dibandingkan bulan sebelumnya, untuk laporan bulanan. */
+export function categoryComparison(current: readonly Transaction[], previous: readonly Transaction[], state: FinancialState): CategoryComparison[] {
+  const currentCategories = expenseCategories(current, state)
+  const previousAmounts = new Map(expenseCategories(previous, state).map(item => [item.id, item.amount]))
+  const total = currentCategories.reduce((sum, item) => sum + item.amount, 0)
+  return currentCategories.map(item => {
+    const previousAmount = previousAmounts.get(item.id) ?? 0
+    return {
+      ...item,
+      previousAmount,
+      share: total > 0 ? item.amount / total : 0,
+      changePercent: previousAmount > 0 ? Math.round((item.amount - previousAmount) / previousAmount * 100) : null,
+    }
+  })
 }

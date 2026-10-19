@@ -40,7 +40,7 @@ supabase/           schema.sql lalu 002_check_code.sql (jalankan berurutan di SQ
 8. Jangan commit `.env`, `scripts/out/`, atau kunci apa pun.
 
 ## Status
-Selesai: skema Supabase, bot Telegram (catat, /saldo, /laporan, /hapus, /start), halaman login/aktivasi tersambung Supabase, layar /app sementara (aktivasi ulang + tautan Telegram), dashboard Beranda + daftar Transaksi, dan layar Akun/Dompet, Kategori, Anggaran, Tabungan (CRUD di `user_state.data`, lewat `useDashboardData().updateState`).
+Selesai: skema Supabase, bot Telegram (catat, /saldo, /laporan, /hapus, /start), halaman login/aktivasi tersambung Supabase, layar /app sementara (aktivasi ulang + tautan Telegram), dashboard Beranda + daftar Transaksi, layar Akun/Dompet, Kategori, Anggaran, Tabungan (CRUD di `user_state.data`, lewat `useDashboardData().updateState`), dan layar Laporan bulanan (ringkasan, arus kas 6 bulan, kategori vs bulan lalu, perbandingan antarbulan).
 
-Berikutnya (urutan): (1) laporan bulanan; (2) form catat transaksi lewat web; (3) uji keamanan RLS.
+Berikutnya (urutan): (1) form catat transaksi lewat web; (2) uji keamanan RLS.
 Ditunda dari MVP: multi-mata uang, split kategori, struk, aset/utang, kalender tagihan, transaksi berulang, impor/ekspor, parser AI, WhatsApp.
