@@ -220,7 +220,9 @@ export function LoginDialog({ open, onClose, onNeedCode }: { open: boolean; onCl
               </button>
             </form>
             <p className="alt">
-              Belum aktivasi? <button type="button" onClick={onNeedCode}>Masukkan kode lisensi</button>.{' '}
+              Belum aktivasi? <button type="button" onClick={onNeedCode}>Masukkan kode lisensi</button>.
+            </p>
+            <p className="alt alt-tight">
               Lupa kata sandi? <button type="button" onClick={() => { setErr(''); setStep('forgot') }}>Atur ulang</button>.
             </p>
           </>
