@@ -8,7 +8,10 @@ import {
   shiftMonth, sortTransactions, summarize, todayMakassar, totalBalance,
   type FinancialState, type Transaction, type TransactionType,
 } from '../../lib/finance'
+import { AccountsScreen } from './Accounts'
+import { BudgetScreen } from './Budget'
 import { CashFlowChart } from './CashFlowChart'
+import { GoalsScreen } from './Goals'
 import { Icon } from './Icon'
 import { TransactionList } from './TransactionList'
 
@@ -30,6 +33,9 @@ function Navigation({ mobile = false }: { mobile?: boolean }) {
   return <nav className={mobile ? 'dash-bottom-nav' : 'dash-navigation'} aria-label={mobile ? 'Navigasi ponsel' : 'Dashboard'}>
     <NavLink end to="/app"><Icon name="home" /><span>Beranda</span></NavLink>
     <NavLink to="/app/transaksi"><Icon name="list" /><span>Transaksi</span></NavLink>
+    <NavLink to="/app/akun"><Icon name="wallet" /><span>Akun</span></NavLink>
+    <NavLink to="/app/anggaran"><Icon name="chart" /><span>Anggaran</span></NavLink>
+    <NavLink to="/app/tabungan"><Icon name="target" /><span>Tabungan</span></NavLink>
     {mobile && botUrl && <a href={botUrl} target="_blank" rel="noopener noreferrer"><Icon name="telegram" /><span>Catat</span></a>}
   </nav>
 }
@@ -40,7 +46,7 @@ function TelegramAction({ className = 'dash-button dash-button-primary' }: { cla
     : <a className={className} href="#telegram"><Icon name="telegram" size={18} />Tautkan Telegram</a>
 }
 
-function EmptyState({ title, children }: { title: string; children: ReactNode }) {
+export function EmptyState({ title, children }: { title: string; children: ReactNode }) {
   return <div className="dash-empty"><span className="dash-empty-icon"><Icon name="list" size={27} /></span><h3>{title}</h3><p>{children}</p></div>
 }
 
@@ -142,30 +148,45 @@ function Transactions({ transactions, state, month }: { transactions: Transactio
   </section>
 }
 
+const PAGES = {
+  beranda: { match: /^\/app\/?$/, title: 'Beranda', greeting: 'Mari lihat perjalanan keuangan Anda.' },
+  transaksi: { match: /^\/app\/transaksi\/?$/, title: 'Transaksi', greeting: 'Setiap catatan punya cerita.' },
+  akun: { match: /^\/app\/akun\/?$/, title: 'Akun & Dompet', greeting: 'Kelola akun dan kategori Anda.' },
+  anggaran: { match: /^\/app\/anggaran\/?$/, title: 'Anggaran', greeting: 'Pantau rencana pengeluaran bulanan Anda.' },
+  tabungan: { match: /^\/app\/tabungan\/?$/, title: 'Tabungan', greeting: 'Rencanakan dan kejar tujuan Anda.' },
+} as const
+
+type PageKey = keyof typeof PAGES
+
 export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked, onSignOut, children }: Props) {
   const data = useDashboardData(userId)
   const toggleTheme = useTheme()
   const location = useLocation()
   const [month, setMonth] = useState(() => todayMakassar().slice(0, 7))
-  const isTransactions = /^\/app\/transaksi\/?$/.test(location.pathname)
-  const validRoute = isTransactions || /^\/app\/?$/.test(location.pathname)
+  const page = (Object.keys(PAGES) as PageKey[]).find(key => PAGES[key].match.test(location.pathname))
   const displayName = name.trim() || 'Anda'
   const initials = displayName.split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()
   const expiry = activeUntil ? expiryFormat.format(new Date(activeUntil)) : null
-  if (!validRoute) return <Navigate to="/app" replace />
+  if (!page) return <Navigate to="/app" replace />
   return <div className="finora-dashboard">
     <a className="skip" href="#dashboard-content">Lewati ke isi dashboard</a>
     <aside className="dash-sidebar"><Link to="/app" className="dash-brand" aria-label="Finora, Beranda"><span>F</span>Finora</Link><p className="dash-sidebar-label">KEUANGAN PRIBADI</p><Navigation />
       <div className="dash-sidebar-bottom"><div className="dash-sidebar-note"><span className="dash-small-spark">✦</span><strong>Selangkah lebih teratur.</strong><p>Kenali uang Anda.<br />Rencanakan hari esok.</p></div><div className="dash-user"><span className="dash-avatar">{initials}</span><div><strong>{displayName}</strong><span>{isActive ? 'Akses aktif' : 'Akses perlu diaktifkan'}</span></div></div><button type="button" className="dash-logout" onClick={() => void onSignOut()}><Icon name="logout" size={17} />Keluar</button></div>
     </aside>
     <main className="dash-main" id="dashboard-content" tabIndex={-1}>
-      <header className="dash-topbar"><div><p className="dash-eyebrow">RUANG KEUANGAN ANDA</p><h1>{isTransactions ? 'Transaksi' : 'Beranda'}</h1><p className="dash-greeting">Halo, {displayName}. {isTransactions ? 'Setiap catatan punya cerita.' : 'Mari lihat perjalanan keuangan Anda.'}</p></div><div className="dash-top-actions"><button className="dash-icon-button" type="button" onClick={toggleTheme} aria-label="Ganti tema terang atau gelap"><Icon name="theme" /></button><button className="dash-mobile-logout dash-icon-button" type="button" onClick={() => void onSignOut()} aria-label="Keluar dari akun"><Icon name="logout" /></button><span className="dash-desktop-action"><TelegramAction /></span></div></header>
-      <div className="dash-period-row"><MonthPicker month={month} onChange={setMonth} /><div className="dash-update"><span className="dash-updated-label" role="status">{data.loading ? 'Memperbarui catatan…' : data.updatedAt ? `Diperbarui ${timeFormat.format(data.updatedAt)} WITA` : 'Belum ada data terbaru'}</span><button type="button" className="dash-button dash-refresh" disabled={data.loading} onClick={data.refresh}><Icon name="refresh" size={16} className={data.loading ? 'dash-spin' : ''} /><span>Perbarui</span></button></div></div>
+      <header className="dash-topbar"><div><p className="dash-eyebrow">RUANG KEUANGAN ANDA</p><h1>{PAGES[page].title}</h1><p className="dash-greeting">Halo, {displayName}. {PAGES[page].greeting}</p></div><div className="dash-top-actions"><button className="dash-icon-button" type="button" onClick={toggleTheme} aria-label="Ganti tema terang atau gelap"><Icon name="theme" /></button><button className="dash-mobile-logout dash-icon-button" type="button" onClick={() => void onSignOut()} aria-label="Keluar dari akun"><Icon name="logout" /></button><span className="dash-desktop-action"><TelegramAction /></span></div></header>
+      {(page === 'beranda' || page === 'transaksi' || page === 'anggaran') && <div className="dash-period-row"><MonthPicker month={month} onChange={setMonth} /><div className="dash-update"><span className="dash-updated-label" role="status">{data.loading ? 'Memperbarui catatan…' : data.updatedAt ? `Diperbarui ${timeFormat.format(data.updatedAt)} WITA` : 'Belum ada data terbaru'}</span><button type="button" className="dash-button dash-refresh" disabled={data.loading} onClick={data.refresh}><Icon name="refresh" size={16} className={data.loading ? 'dash-spin' : ''} /><span>Perbarui</span></button></div></div>}
       {!isActive && <div className="dash-notice"><Icon name="calendar" /><div><strong>{expiry ? 'Masa aktif Anda telah berakhir.' : 'Aktifkan akun Anda.'}</strong><p>Riwayat tetap dapat dibaca. Masukkan kode lisensi pada bagian akses akun untuk melanjutkan pencatatan.</p><a href="#telegram">Aktivasi akses akun <span aria-hidden="true">→</span></a></div></div>}
       {data.error && <div className="dash-error" role="alert"><strong>{data.error}</strong>{data.hasData && <p>Ringkasan masih menampilkan pembaruan terakhir.</p>}<button type="button" className="dash-text-link" onClick={data.refresh}>Coba lagi</button></div>}
       <div aria-busy={data.loading}>
         {!data.hasData && data.loading ? <div className="dash-skeleton" role="status"><span className="sr-only">Memuat ringkasan dan transaksi Anda.</span><div /><div /><div /></div>
-          : data.hasData ? isTransactions ? <Transactions transactions={data.transactions} state={data.financialState} month={month} /> : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} />
+          : data.hasData ? (
+            page === 'transaksi' ? <Transactions transactions={data.transactions} state={data.financialState} month={month} />
+              : page === 'akun' ? <AccountsScreen state={data.financialState} onUpdate={data.updateState} />
+                : page === 'anggaran' ? <BudgetScreen transactions={data.transactions} state={data.financialState} month={month} onUpdate={data.updateState} />
+                  : page === 'tabungan' ? <GoalsScreen state={data.financialState} onUpdate={data.updateState} />
+                    : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} />
+          )
             : <section className="dash-card"><EmptyState title="Catatan belum dapat dimuat">Gunakan tombol Coba lagi untuk membaca ulang data Anda.</EmptyState></section>}
       </div>
       <section id="telegram" className="dash-account-section" aria-label="Akses akun dan Telegram"><details open={!telegramLinked || !isActive}><summary><span><Icon name="telegram" size={19} /><strong>Akses akun & Telegram</strong></span><span className="dash-muted">{isActive && expiry ? `Aktif sampai ${expiry}` : 'Aktivasi akses'}</span></summary><div className="dash-account-panel">{children}</div></details></section>

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  cashFlow, categoryFor, expenseCategories, filterTransactions, readFinancialState,
-  shiftMonth, sortTransactions, summarize, todayMakassar, totalBalance,
+  budgetStats, cashFlow, categoryFor, contributeToGoal, expenseCategories, expenseCategoryOptions,
+  filterTransactions, goalProgress, readFinancialState, removeAccount, removeCategory, removeGoal,
+  setBudgetTotal, setCategoryBudget, shiftMonth, sortTransactions, summarize, todayMakassar,
+  totalBalance, upsertAccount, upsertCategory, upsertGoal,
 } from '../src/lib/finance.ts'
 
 const state = readFinancialState({
@@ -60,10 +62,53 @@ test('arus kas enam bulan dan pengeluaran kategori mengecualikan transfer', () =
 })
 
 test('kategori bawaan bot dan metadata kosong ditangani tanpa data contoh', () => {
-  assert.deepEqual(readFinancialState(null), { accounts: [], cats: [] })
+  assert.deepEqual(readFinancialState(null), { accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } })
   assert.equal(categoryFor(tx(), { accounts: [], cats: [] }).name, 'Makan & Minum')
   assert.equal(categoryFor(tx({ cat_id: 'deleted' }), state).name, 'Lainnya')
   assert.equal(readFinancialState({ cats: [{ id: 'x', name: 'X', color: 'url(https://invalid)' }] }).cats[0].color, '#8a9484')
+})
+
+test('akun, kategori, dan tujuan tabungan bisa ditambah, diubah, dan dihapus di state JSON', () => {
+  let s = { accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } }
+  s = upsertAccount(s, { id: 'a1', name: 'Tunai', type: 'cash', opening: 100000 })
+  assert.deepEqual(s.accounts, [{ id: 'a1', name: 'Tunai', type: 'cash', opening: 100000 }])
+  s = upsertAccount(s, { id: 'a1', name: 'Dompet Tunai', type: 'cash', opening: 50000 })
+  assert.equal(s.accounts.length, 1)
+  assert.equal(s.accounts[0].name, 'Dompet Tunai')
+  s = removeAccount(s, 'a1')
+  assert.equal(s.accounts.length, 0)
+
+  s = upsertCategory(s, { id: 'c1', name: 'Olahraga', color: '#111111', type: 'expense' })
+  assert.equal(expenseCategoryOptions(s).some(item => item.id === 'c1'), true)
+  s = setCategoryBudget(s, 'c1', 200000)
+  assert.equal(s.budget.cats.c1, 200000)
+  s = removeCategory(s, 'c1')
+  assert.equal(s.cats.length, 0)
+  assert.equal(s.budget.cats.c1, undefined)
+
+  s = upsertGoal(s, { id: 'g1', name: 'Dana darurat', target: 1000000, saved: 0 })
+  s = contributeToGoal(s, 'g1', 300000)
+  assert.equal(s.goals[0].saved, 300000)
+  s = contributeToGoal(s, 'g1', -1000000)
+  assert.equal(s.goals[0].saved, 0, 'saldo tabungan tidak boleh negatif')
+  assert.deepEqual(goalProgress(s.goals[0]), { ratio: 0, remaining: 1000000, done: false })
+  s = removeGoal(s, 'g1')
+  assert.equal(s.goals.length, 0)
+})
+
+test('anggaran bulanan membandingkan batas dengan pengeluaran nyata per kategori', () => {
+  let s = setBudgetTotal({ accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } }, 100000)
+  s = setCategoryBudget(s, 'food', 60000)
+  const month = [tx({ id: '1', amount: 25000, cat_id: 'food' }), tx({ id: '2', amount: 50000, cat_id: 'transport' })]
+  const stats = budgetStats(month, s)
+  assert.deepEqual(stats.total, { limit: 100000, spent: 75000 })
+  const food = stats.categories.find(item => item.id === 'food')
+  assert.deepEqual({ limit: food.limit, spent: food.spent }, { limit: 60000, spent: 25000 })
+  const transport = stats.categories.find(item => item.id === 'transport')
+  assert.deepEqual({ limit: transport.limit, spent: transport.spent }, { limit: 0, spent: 50000 })
+
+  const noTotal = setCategoryBudget({ accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } }, 'food', 60000)
+  assert.equal(budgetStats([], noTotal).total.limit, 60000, 'tanpa batas total, jumlahkan batas per kategori')
 })
 
 test('transaksi terbaru diurutkan stabil berdasarkan tanggal dan waktu pencatatan', () => {

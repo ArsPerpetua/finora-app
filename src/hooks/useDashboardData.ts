@@ -12,8 +12,10 @@ interface DashboardData {
   updatedAt: Date | null
 }
 
+const emptyFinancialState: FinancialState = { accounts: [], cats: [], goals: [], budget: { total: 0, cats: {} } }
+
 const empty = (ownerId: string): DashboardData => ({
-  ownerId, transactions: [], financialState: { accounts: [], cats: [] },
+  ownerId, transactions: [], financialState: emptyFinancialState,
   loading: true, hasData: false, error: '', updatedAt: null,
 })
 
@@ -86,5 +88,22 @@ export function useDashboardData(userId: string) {
     }
   }, [refresh])
 
-  return { ...(data.ownerId === userId ? data : empty(userId)), refresh }
+  const updateState = useCallback(async (updater: (state: FinancialState) => FinancialState) => {
+    let previous: FinancialState | null = null
+    let next: FinancialState | null = null
+    setData(current => {
+      if (current.ownerId !== userId) return current
+      previous = current.financialState
+      next = updater(current.financialState)
+      return { ...current, financialState: next }
+    })
+    if (!next) return
+    const { error } = await supabase.from('user_state').update({ data: next, updated_at: new Date().toISOString() }).eq('user_id', userId)
+    if (error) {
+      setData(current => current.ownerId === userId && previous ? { ...current, financialState: previous } : current)
+      throw error
+    }
+  }, [userId])
+
+  return { ...(data.ownerId === userId ? data : empty(userId)), refresh, updateState }
 }
