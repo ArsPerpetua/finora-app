@@ -1,14 +1,17 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CloseButton, Modal } from '../Modal'
 import { EMAIL_RE, MESSAGES, savePendingCode } from '../../lib/licenseCode'
 import { isSupabaseConfigured, supabase } from '../../lib/supabase'
 
-function PasswordField({ id, label, autoComplete, hint }: { id: string; label: string; autoComplete: string; hint?: string }) {
+function PasswordField({ id, label, autoComplete, hint, labelAction }: { id: string; label: string; autoComplete: string; hint?: string; labelAction?: ReactNode }) {
   const [show, setShow] = useState(false)
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <div className="field-label-row">
+        <label htmlFor={id}>{label}</label>
+        {labelAction}
+      </div>
       <div className="pw">
         <input id={id} name="password" type={show ? 'text' : 'password'} autoComplete={autoComplete} required />
         <button
@@ -213,15 +216,15 @@ export function LoginDialog({ open, onClose, onNeedCode }: { open: boolean; onCl
                 <label htmlFor="log-email">Email</label>
                 <input id="log-email" name="email" type="email" autoComplete="username" inputMode="email" required />
               </div>
-              <PasswordField id="log-pass" label="Kata sandi" autoComplete="current-password" />
+              <PasswordField
+                id="log-pass" label="Kata sandi" autoComplete="current-password"
+                labelAction={<button type="button" onClick={() => { setErr(''); setStep('forgot') }}>Lupa kata sandi?</button>}
+              />
               <p className="err" role="alert">{err}</p>
               <button className="btn btn-ink btn-block" type="submit" disabled={busy}>
                 {busy ? 'Memeriksa…' : 'Login'}
               </button>
             </form>
-            <p className="alt">
-              <button type="button" onClick={() => { setErr(''); setStep('forgot') }}>Lupa kata sandi?</button>
-            </p>
             <p className="alt">
               Belum aktivasi? <button type="button" onClick={onNeedCode}>Masukkan kode lisensi</button>.
             </p>
