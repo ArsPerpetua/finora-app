@@ -144,10 +144,19 @@ export function AccountDialog({ code, onClose }: { code: string | null; onClose:
 
 /* ---------------- Login ---------------- */
 
+type LoginStep = 'login' | 'forgot' | 'sent'
+
 export function LoginDialog({ open, onClose, onNeedCode }: { open: boolean; onClose: () => void; onNeedCode: () => void }) {
   const navigate = useNavigate()
+  const [step, setStep] = useState<LoginStep>('login')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+
+  function close() {
+    onClose()
+    setErr('')
+    setStep('login')
+  }
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -171,28 +180,84 @@ export function LoginDialog({ open, onClose, onNeedCode }: { open: boolean; onCl
     navigate('/app')
   }
 
+  async function submitForgot(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const email = String(fd.get('email') ?? '').trim()
+    if (!EMAIL_RE.test(email)) return setErr('Isi email dengan format yang benar.')
+    if (!isSupabaseConfigured) return setErr(MESSAGES.not_configured)
+    if (!navigator.onLine) return setErr(MESSAGES.offline)
+
+    setErr('')
+    setBusy(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/reset-password` })
+    setBusy(false)
+    // Supabase tidak membedakan "email tidak terdaftar" lewat error (mencegah enumerasi akun),
+    // jadi selalu tampilkan pesan sukses yang sama kecuali memang gangguan server/koneksi.
+    if (error) return setErr(MESSAGES.server)
+    setStep('sent')
+  }
+
   return (
-    <Modal open={open} onClose={() => { onClose(); setErr('') }} labelledBy="log-title">
+    <Modal open={open} onClose={close} labelledBy="log-title">
       <div className="dlg">
-        <div className="dlg-head">
-          <h2 id="log-title">Login</h2>
-          <CloseButton onClick={onClose} />
-        </div>
-        <p className="lead">Masuk dengan akun yang Anda buat saat aktivasi. Tidak perlu kode lisensi.</p>
-        <form onSubmit={submit} noValidate>
-          <div className="field">
-            <label htmlFor="log-email">Email</label>
-            <input id="log-email" name="email" type="email" autoComplete="username" inputMode="email" required />
+        {step === 'login' && (
+          <>
+            <div className="dlg-head">
+              <h2 id="log-title">Login</h2>
+              <CloseButton onClick={close} />
+            </div>
+            <p className="lead">Masuk dengan akun yang Anda buat saat aktivasi. Tidak perlu kode lisensi.</p>
+            <form onSubmit={submit} noValidate>
+              <div className="field">
+                <label htmlFor="log-email">Email</label>
+                <input id="log-email" name="email" type="email" autoComplete="username" inputMode="email" required />
+              </div>
+              <PasswordField id="log-pass" label="Kata sandi" autoComplete="current-password" />
+              <p className="err" role="alert">{err}</p>
+              <button className="btn btn-ink btn-block" type="submit" disabled={busy}>
+                {busy ? 'Memeriksa…' : 'Login'}
+              </button>
+            </form>
+            <p className="alt">
+              <button type="button" onClick={() => { setErr(''); setStep('forgot') }}>Lupa kata sandi?</button>
+            </p>
+            <p className="alt">
+              Belum aktivasi? <button type="button" onClick={onNeedCode}>Masukkan kode lisensi</button>.
+            </p>
+          </>
+        )}
+
+        {step === 'forgot' && (
+          <>
+            <div className="dlg-head">
+              <h2 id="log-title">Atur ulang kata sandi</h2>
+              <CloseButton onClick={close} />
+            </div>
+            <p className="lead">Masukkan email akun Anda. Kami kirim tautan untuk membuat kata sandi baru.</p>
+            <form onSubmit={submitForgot} noValidate>
+              <div className="field">
+                <label htmlFor="log-forgot-email">Email</label>
+                <input id="log-forgot-email" name="email" type="email" autoComplete="username" inputMode="email" required />
+              </div>
+              <p className="err" role="alert">{err}</p>
+              <button className="btn btn-ink btn-block" type="submit" disabled={busy}>
+                {busy ? 'Mengirim…' : 'Kirim tautan atur ulang'}
+              </button>
+            </form>
+            <p className="alt">
+              <button type="button" onClick={() => { setErr(''); setStep('login') }}>Kembali ke Login</button>
+            </p>
+          </>
+        )}
+
+        {step === 'sent' && (
+          <div className="done">
+            <h2 id="log-title">Cek email Anda.</h2>
+            <p className="lead">Kalau email itu terdaftar, kami sudah mengirim tautan untuk membuat kata sandi baru. Tautan berlaku sekali dan sementara.</p>
+            <button className="btn btn-ink btn-block" style={{ marginTop: 20 }} type="button" onClick={close}>Mengerti</button>
           </div>
-          <PasswordField id="log-pass" label="Kata sandi" autoComplete="current-password" />
-          <p className="err" role="alert">{err}</p>
-          <button className="btn btn-ink btn-block" type="submit" disabled={busy}>
-            {busy ? 'Memeriksa…' : 'Login'}
-          </button>
-        </form>
-        <p className="alt">
-          Belum aktivasi? <button type="button" onClick={onNeedCode}>Masukkan kode lisensi</button>.
-        </p>
+        )}
       </div>
     </Modal>
   )

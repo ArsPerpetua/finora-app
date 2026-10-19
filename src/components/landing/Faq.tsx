@@ -38,7 +38,7 @@ export function Faq() {
           </details>
           <details>
             <summary>Saya lupa kata sandi.</summary>
-            <div className="ans"><Support>Hubungi kami</Support> dengan email akun Anda, kami bantu mengatur ulang.</div>
+            <div className="ans">Tekan Login, lalu "Lupa kata sandi?". Masukkan email akun Anda dan kami kirim tautan untuk membuat kata sandi baru — tidak perlu menunggu balasan kami.</div>
           </details>
           <details>
             <summary>Bagaimana jika saya ingin mengembalikan pembelian?</summary>
