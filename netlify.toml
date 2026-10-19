@@ -11,3 +11,12 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# A13: Content-Security-Policy dasar. script-src/style-src/connect-src dibatasi ke origin
+# sendiri + yang memang dipakai (Google Fonts, Supabase REST+Realtime). Tanpa unsafe-eval.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

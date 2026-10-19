@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/check-bundle-secrets.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "node test/parser.test.mjs && node --experimental-strip-types --test test/finance.test.mjs",

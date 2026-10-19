@@ -10,7 +10,7 @@ export function isValidCodeFormat(code: string): boolean {
   return /^[A-Z0-9]{4}(-[A-Z0-9]{4}){3}$/.test(code) && code.startsWith(config.codePrefix + '-')
 }
 
-export type CodeStatus = 'ok' | 'used' | 'revoked' | 'not_found'
+export type CodeStatus = 'ok' | 'used' | 'revoked' | 'not_found' | 'rate_limited'
 
 const PENDING_CODE_KEY = 'finora.pendingCode'
 
@@ -43,6 +43,7 @@ export const MESSAGES = {
   not_found: 'Kode tidak ditemukan. Periksa kembali atau hubungi kami.',
   used: 'Kode ini sudah dipakai untuk membuat akun. Silakan tekan Login.',
   revoked: 'Kode ini sudah tidak aktif. Hubungi kami untuk bantuan.',
+  rate_limited: 'Terlalu banyak percobaan. Coba lagi dalam beberapa menit.',
   offline: 'Perlu koneksi internet untuk langkah ini. Coba lagi saat online.',
   server: 'Terjadi gangguan pada server. Coba lagi sebentar lagi.',
   not_configured: 'Aplikasi belum tersambung ke server. Isi file .env terlebih dahulu.',
