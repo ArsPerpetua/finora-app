@@ -4,7 +4,7 @@ import { config } from '../../config'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useTheme } from '../../hooks/useTheme'
 import {
-  budgetStats, budgetTier, cashFlow, categoryFor, expenseCategories, filterTransactions, goalProgress, monthLabel, rupiah,
+  budgetStats, budgetTier, cashFlow, categoryFor, expenseCategories, filterTransactions, goalProgress, goalSavedAmount, monthLabel, rupiah,
   shiftMonth, sortTransactions, summarize, todayMakassar, totalBalance,
   type FinancialState, type Transaction, type TransactionType,
 } from '../../lib/finance'
@@ -108,14 +108,15 @@ function BudgetProgressCard({ transactions, state, month }: { transactions: Tran
   </section>
 }
 
-function SavingsCard({ state }: { state: FinancialState }) {
+function SavingsCard({ state, transactions }: { state: FinancialState; transactions: Transaction[] }) {
   return <section className="dash-card dash-span-6" aria-labelledby="savings-title">
     <div className="dash-card-heading"><h2 id="savings-title">Tabungan</h2><Link className="dash-text-link" to="/app/tabungan">Lihat semua <Icon name="right" size={15} /></Link></div>
     {state.goals.length
       ? <ul className="dash-list">{state.goals.slice(0, 3).map(goal => {
-        const progress = goalProgress(goal)
+        const saved = goalSavedAmount(goal, transactions)
+        const progress = goalProgress({ ...goal, saved })
         return <li key={goal.id} className="dash-row dash-row-stacked">
-          <div className="dash-row" style={{ border: 0, padding: 0 }}><div className="dash-row-main"><strong>{goal.name}</strong><span>{rupiah(goal.saved)} dari {rupiah(goal.target)}</span></div><strong>{Math.round(progress.ratio * 100)}%</strong></div>
+          <div className="dash-row" style={{ border: 0, padding: 0 }}><div className="dash-row-main"><strong>{goal.name}</strong><span>{rupiah(saved)} dari {rupiah(goal.target)}</span></div><strong>{Math.round(progress.ratio * 100)}%</strong></div>
           <div className={`dash-progress${progress.done ? ' is-done' : ''}`}><i style={{ width: `${progress.ratio * 100}%` }} /></div>
         </li>
       })}</ul>
@@ -179,7 +180,7 @@ function Overview({ transactions, state, month, linked, active, onAddTransaction
     <Categories transactions={selected} state={state} />
 
     <BudgetProgressCard transactions={transactions} state={state} month={month} />
-    <SavingsCard state={state} />
+    <SavingsCard state={state} transactions={transactions} />
     <MainMenu />
 
     <section className="dash-card dash-span-12" aria-labelledby="recent-title"><div className="dash-card-heading"><div><h2 id="recent-title">Transaksi terbaru</h2><p className="dash-muted">Catatan pada {monthLabel(month)}</p></div><Link className="dash-text-link" to="/app/transaksi">Lihat semua <Icon name="right" size={15} /></Link></div>
@@ -270,7 +271,7 @@ export function Dashboard({ userId, name, activeUntil, isActive, telegramLinked,
             page === 'transaksi' ? <Transactions transactions={data.transactions} state={data.financialState} month={month} active={isActive} onAddTransaction={openAddTransaction} onEditTransaction={openEditTransaction} onRefresh={data.refresh} />
               : page === 'akun' ? <AccountsScreen state={data.financialState} transactions={data.transactions} onUpdate={data.updateState} />
                 : page === 'anggaran' ? <BudgetScreen transactions={data.transactions} state={data.financialState} month={month} onUpdate={data.updateState} />
-                  : page === 'tabungan' ? <GoalsScreen state={data.financialState} onUpdate={data.updateState} />
+                  : page === 'tabungan' ? <GoalsScreen state={data.financialState} transactions={data.transactions} userId={userId} onUpdate={data.updateState} onSaved={data.refresh} />
                     : page === 'laporan' ? <ReportScreen transactions={data.transactions} state={data.financialState} month={month} />
                       : <Overview transactions={data.transactions} state={data.financialState} month={month} linked={telegramLinked} active={isActive} onAddTransaction={openAddTransaction} />
           )

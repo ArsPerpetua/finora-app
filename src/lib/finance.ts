@@ -13,6 +13,7 @@ export interface Transaction {
   created_at: string
   source: 'web' | 'telegram'
   fee?: number | string
+  goal_id?: string | null
 }
 
 export interface Account {
@@ -55,9 +56,16 @@ export interface Budget {
 export interface Goal {
   id: string
   name: string
+  icon: string
   target: number
+  /** Saldo awal sebelum fitur setoran tercatat sebagai transaksi ada; setoran/tarik baru masuk lewat transactions (lihat goalContributions). */
   saved: number
+  deadline: string | null
+  /** Rencana setoran per bulan, 0 = belum diisi. */
+  monthly: number
 }
+
+export const GOAL_ICONS = ['target', 'shield', 'plane', 'phone', 'home', 'car', 'book', 'gift', 'heart', 'coin']
 
 export interface FinancialState {
   accounts: Account[]
@@ -151,7 +159,13 @@ export function readFinancialState(value: unknown): FinancialState {
     if (!item || typeof item !== 'object' || typeof item.id !== 'string' || typeof item.name !== 'string') continue
     const target = Number(item.target ?? 0)
     const saved = Number(item.saved ?? 0)
-    goals.push({ id: item.id, name: item.name, target: Number.isFinite(target) && target > 0 ? target : 0, saved: Number.isFinite(saved) ? saved : 0 })
+    const monthly = Number(item.monthly ?? 0)
+    goals.push({
+      id: item.id, name: item.name, target: Number.isFinite(target) && target > 0 ? target : 0, saved: Number.isFinite(saved) ? saved : 0,
+      icon: typeof item.icon === 'string' && GOAL_ICONS.includes(item.icon) ? item.icon : 'target',
+      deadline: typeof item.deadline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.deadline) ? item.deadline : null,
+      monthly: Number.isFinite(monthly) && monthly > 0 ? monthly : 0,
+    })
   }
   const budgetRoot = root.budget && typeof root.budget === 'object' ? root.budget as Record<string, unknown> : {}
   const total = Number(budgetRoot.total ?? 0)
@@ -244,8 +258,20 @@ export function removeGoal(state: FinancialState, id: string): FinancialState {
   return { ...state, goals: state.goals.filter(item => item.id !== id) }
 }
 
-export function contributeToGoal(state: FinancialState, id: string, amount: number): FinancialState {
-  return { ...state, goals: state.goals.map(goal => goal.id === id ? { ...goal, saved: Math.max(0, goal.saved + amount) } : goal) }
+/** Setoran (account_id terisi) dikurangi tarikan (to_account_id terisi) dari transaksi transfer yang ditandai tujuan ini. */
+export function goalContributions(goalId: string, transactions: readonly Transaction[]): number {
+  let total = 0
+  for (const tx of transactions) {
+    if (tx.type !== 'transfer' || tx.goal_id !== goalId) continue
+    if (tx.account_id) total += Number(tx.amount)
+    else if (tx.to_account_id) total -= Number(tx.amount)
+  }
+  return total
+}
+
+/** Total tersimpan efektif: saldo awal (sebelum fitur transaksi ada) ditambah setoran/tarikan yang sudah tercatat. */
+export function goalSavedAmount(goal: Goal, transactions: readonly Transaction[]): number {
+  return Math.max(0, goal.saved + goalContributions(goal.id, transactions))
 }
 
 export function goalProgress(goal: Goal) {
@@ -321,6 +347,10 @@ export function accountLabel(tx: Transaction, state: FinancialState): string {
   const account = state.accounts.find(item => item.id === tx.account_id)?.name
   if (tx.type === 'transfer') {
     const target = state.accounts.find(item => item.id === tx.to_account_id)?.name
+    if (tx.goal_id) {
+      const goal = state.goals.find(item => item.id === tx.goal_id)?.name ?? 'Tabungan'
+      return tx.account_id ? `${account ?? 'Akun'} → ${goal}` : `${goal} → ${target ?? 'Akun'}`
+    }
     return `${account ?? 'Akun asal'} → ${target ?? 'Akun tujuan'}`
   }
   return account ?? (tx.source === 'telegram' ? 'Telegram' : 'Web')

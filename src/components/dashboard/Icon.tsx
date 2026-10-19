@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 export type IconName = 'home' | 'list' | 'wallet' | 'income' | 'expense' | 'transfer' | 'left' | 'right' | 'refresh' | 'search' | 'telegram' | 'theme' | 'logout' | 'eye' | 'eyeoff' | 'check' | 'calendar' | 'food' | 'tag' | 'chart' | 'target' | 'plus' | 'edit' | 'trash' | 'close' | 'trend' | 'user' | 'star' | 'starfill'
-  | 'utensils' | 'car' | 'bag' | 'bolt' | 'film' | 'heart' | 'book' | 'plane' | 'gift' | 'repeat' | 'coffee' | 'briefcase' | 'coin' | 'phone' | 'tv' | 'music' | 'cloud' | 'dots' | 'receipt'
+  | 'utensils' | 'car' | 'bag' | 'bolt' | 'film' | 'heart' | 'book' | 'plane' | 'gift' | 'repeat' | 'coffee' | 'briefcase' | 'coin' | 'phone' | 'tv' | 'music' | 'cloud' | 'dots' | 'receipt' | 'shield'
 
 const paths: Record<IconName, ReactNode> = {
   home: <><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /><path d="M9 21v-8h6v8" /></>,
@@ -52,6 +52,7 @@ const paths: Record<IconName, ReactNode> = {
   cloud: <path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1A4.5 4.5 0 0 1 17 18z" />,
   dots: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
   receipt: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6" />,
+  shield: <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />,
 }
 
 export function Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {

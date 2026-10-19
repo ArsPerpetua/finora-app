@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  budgetStats, budgetTier, CATEGORY_ICONS, cashFlow, categoryComparison, categoryFor, contributeToGoal, DEFAULT_CATEGORIES, expenseCategories,
-  expenseCategoryOptions, filterTransactions, goalProgress, isAccountInUse, readFinancialState, removeAccount,
+  accountLabel, budgetStats, budgetTier, CATEGORY_ICONS, cashFlow, categoryComparison, categoryFor, DEFAULT_CATEGORIES, expenseCategories,
+  expenseCategoryOptions, filterTransactions, goalContributions, goalProgress, goalSavedAmount, isAccountInUse, readFinancialState, removeAccount,
   removeCategory, removeGoal, setBudgetTotal, setCategoryBudget, setDefaultAccount, shiftMonth, sortTransactions,
   summarize, todayMakassar, totalBalance, upsertAccount, upsertCategory, upsertGoal,
 } from '../src/lib/finance.ts'
@@ -102,14 +102,34 @@ test('akun, kategori, dan tujuan tabungan bisa ditambah, diubah, dan dihapus di 
   assert.equal(s.cats.length, 0)
   assert.equal(s.budget.cats.c1, undefined)
 
-  s = upsertGoal(s, { id: 'g1', name: 'Dana darurat', target: 1000000, saved: 0 })
-  s = contributeToGoal(s, 'g1', 300000)
-  assert.equal(s.goals[0].saved, 300000)
-  s = contributeToGoal(s, 'g1', -1000000)
-  assert.equal(s.goals[0].saved, 0, 'saldo tabungan tidak boleh negatif')
+  s = upsertGoal(s, { id: 'g1', name: 'Dana darurat', icon: 'shield', target: 1000000, saved: 0, deadline: null, monthly: 0 })
   assert.deepEqual(goalProgress(s.goals[0]), { ratio: 0, remaining: 1000000, done: false })
   s = removeGoal(s, 'g1')
   assert.equal(s.goals.length, 0)
+})
+
+test('tujuan tabungan: ikon/tenggat/rencana setoran tervalidasi dengan nilai bawaan aman', () => {
+  const read = readFinancialState({
+    goals: [
+      { id: 'g1', name: 'Dana darurat', icon: 'shield', target: 1000000, saved: 50000, deadline: '2027-01-15', monthly: 200000 },
+      { id: 'g2', name: 'Liburan', icon: 'bukan-ikon', target: 500000, saved: 0, deadline: 'tanggal-salah', monthly: -100 },
+    ],
+  })
+  assert.deepEqual(read.goals[0], { id: 'g1', name: 'Dana darurat', icon: 'shield', target: 1000000, saved: 50000, deadline: '2027-01-15', monthly: 200000 })
+  assert.deepEqual({ icon: read.goals[1].icon, deadline: read.goals[1].deadline, monthly: read.goals[1].monthly }, { icon: 'target', deadline: null, monthly: 0 })
+})
+
+test('setoran/tarik tabungan tercatat sebagai transaksi transfer bertanda goal_id', () => {
+  const goal = { id: 'g1', name: 'Dana darurat', icon: 'shield', target: 1000000, saved: 100000, deadline: null, monthly: 0 }
+  const deposit = tx({ id: 'd1', type: 'transfer', amount: 300000, cat_id: null, account_id: 'cash', to_account_id: null, goal_id: 'g1' })
+  const withdraw = tx({ id: 'd2', type: 'transfer', amount: 50000, cat_id: null, account_id: null, to_account_id: 'cash', goal_id: 'g1' })
+  const unrelated = tx({ id: 'd3', type: 'transfer', amount: 999999, cat_id: null, account_id: 'cash', to_account_id: 'bank', goal_id: 'g2' })
+  assert.equal(goalContributions('g1', [deposit, withdraw, unrelated]), 250000, 'setoran 300rb dikurangi tarikan 50rb')
+  assert.equal(goalSavedAmount(goal, [deposit, withdraw]), 350000, 'saldo awal 100rb + kontribusi 250rb')
+  assert.equal(goalSavedAmount(goal, [withdraw]), 50000, 'tidak boleh negatif meski tarikan lebih besar dari saldo awal')
+  const stateWithGoal = { ...state, goals: [goal] }
+  assert.equal(accountLabel(deposit, stateWithGoal), 'Tunai → Dana darurat')
+  assert.equal(accountLabel(withdraw, stateWithGoal), 'Dana darurat → Tunai')
 })
 
 test('anggaran bulanan membandingkan batas dengan pengeluaran nyata per kategori', () => {
